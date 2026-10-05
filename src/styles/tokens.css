@@ -1,0 +1,131 @@
+/* Tinute Design Tokens: Neo-Pop Comic & Instrument Panel System */
+
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('/fonts/GeistMono-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('/fonts/GeistMono-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* Light theme default tokens - Warm Comic Paper */
+  --color-canvas: #fafaf9;
+  --color-surface: #ffffff;
+  --color-border: #18181b;
+  --color-border-subtle: #e7e5e4;
+  --color-text: #1c1917;
+  --color-muted: #6b6661;
+  --color-accent: #4f46e5;
+  --color-accent-contrast: #ffffff;
+  --color-accent-hover: #4338ca;
+  --color-savings: #16a34a;
+  --color-savings-text: #15803d;
+  --color-savings-bg: rgba(22, 163, 74, 0.12);
+  --color-lossy: #d97706;
+  --color-lossy-text: #b45309;
+  --color-lossy-bg: rgba(217, 119, 6, 0.12);
+
+  /* Neo-Pop Comic Tokens */
+  --color-comic-yellow: #facc15;
+  --color-comic-pink: #f43f5e;
+  --color-comic-cyan: #0284c7;
+  --color-comic-lime: #16a34a;
+  --color-comic-purple: #9333ea;
+  --color-comic-ink: #18181b;
+  --color-comic-shadow: #18181b;
+  --color-comic-card: #ffffff;
+
+  /* Arcade legacy aliases mapped to comic */
+  --color-arcade-cyan: #0284c7;
+  --color-arcade-pink: #f43f5e;
+  --color-arcade-yellow: #d97706;
+  --color-arcade-neon: #0284c7;
+  --color-arcade-glow: rgba(244, 63, 94, 0.18);
+  --color-arcade-card: #ffffff;
+  --color-arcade-badge-bg: #e0f2fe;
+  --color-arcade-badge-text: #0369a1;
+
+  --radius-control: 10px;
+  --radius-card: 16px;
+  --radius-comic: 18px;
+}
+
+.dark {
+  /* Dark theme tokens - Comic Night Palette */
+  --color-canvas: #0f1015;
+  --color-surface: #181920;
+  --color-border: #2e3342;
+  --color-border-subtle: #242731;
+  --color-text: #ededed;
+  --color-muted: #9496a1;
+  --color-accent: #818cf8;
+  --color-accent-contrast: #0b0b0c;
+  --color-accent-hover: #9ca3f8;
+  --color-savings: #4ade80;
+  --color-savings-text: #4ade80;
+  --color-savings-bg: rgba(74, 222, 128, 0.15);
+  --color-lossy: #fbbf24;
+  --color-lossy-text: #fbbf24;
+  --color-lossy-bg: rgba(251, 191, 36, 0.15);
+
+  /* Neo-Pop Comic Tokens (Dark) */
+  --color-comic-yellow: #fde047;
+  --color-comic-pink: #fb7185;
+  --color-comic-cyan: #38bdf8;
+  --color-comic-lime: #4ade80;
+  --color-comic-purple: #c084fc;
+  --color-comic-ink: #000000;
+  --color-comic-shadow: #000000;
+  --color-comic-card: #181920;
+
+  /* Arcade legacy aliases mapped to comic (Dark) */
+  --color-arcade-cyan: #38bdf8;
+  --color-arcade-pink: #fb7185;
+  --color-arcade-yellow: #fde047;
+  --color-arcade-neon: #38bdf8;
+  --color-arcade-glow: rgba(251, 113, 133, 0.22);
+  --color-arcade-card: #181920;
+  --color-arcade-badge-bg: rgba(56, 189, 248, 0.15);
+  --color-arcade-badge-text: #38bdf8;
+}

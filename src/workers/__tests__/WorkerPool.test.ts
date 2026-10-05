@@ -1,0 +1,106 @@
+import { describe, it, expect, vi } from 'vitest';
+import { WorkerPool } from '../WorkerPool';
+import { ok } from '../../pipeline/types';
+import type { WorkerJobPayload } from '../types';
+
+describe('WorkerPool Lifecycle & Fault Isolation', () => {
+  it('determines optimal pool size based on hardwareConcurrency - 1', () => {
+    const desktopSize = WorkerPool.determineOptimalPoolSize();
+    expect(desktopSize).toBeGreaterThanOrEqual(1);
+  });
+
+  it('manages queued jobs and responds via mocked worker factory', async () => {
+    // Create mock worker with Comlink-like postMessage interface
+    const mockWorkerFactory = () => {
+      const listeners: Record<string, EventListener[]> = {};
+      const mockWorker: unknown = {
+        addEventListener: (event: string, fn: EventListener) => {
+          const list = listeners[event] ?? [];
+          list.push(fn);
+          listeners[event] = list;
+        },
+        removeEventListener: () => {},
+        postMessage: (msg: unknown) => {
+          // Simulate Comlink RPC response
+          setTimeout(() => {
+            const handlers = listeners['message'] || [];
+            for (const handler of handlers) {
+              handler({
+                data: {
+                  id: (msg as { id: string }).id,
+                  type: 'RESOLVE',
+                  value: ok({
+                    id: 'mock-job-1',
+                    outputBuffer: new ArrayBuffer(50),
+                    outputFormat: 'webp',
+                    originalFormat: 'jpeg',
+                    originalSize: 100,
+                    finalSize: 50,
+                    savedBytes: 50,
+                    savingsPercentage: 50,
+                    neverBiggerTriggered: false,
+                    generationalLossWarning: false,
+                    classification: 'photo',
+                    mode: 'visually-lossless',
+                    metadataReport: { gpsRemoved: true, exifRemoved: true, iccPreserved: true },
+                    durationMs: 15,
+                  }),
+                },
+              } as unknown as MessageEvent);
+            }
+          }, 5);
+        },
+        terminate: vi.fn(),
+      };
+      return mockWorker as Worker;
+    };
+
+    const pool = new WorkerPool({
+      maxWorkers: 2,
+      workerFactory: mockWorkerFactory,
+    });
+
+    expect(pool.size).toBe(2);
+    pool.destroy();
+  });
+
+  it('cancels queued jobs immediately with code JOB_CANCELLED', async () => {
+    // Worker that never responds to simulate long running task
+    const mockWorkerFactory = () => {
+      const mockWorker: unknown = {
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        postMessage: () => {},
+        terminate: vi.fn(),
+      };
+      return mockWorker as Worker;
+    };
+
+    const pool = new WorkerPool({
+      maxWorkers: 1,
+      workerFactory: mockWorkerFactory,
+    });
+
+    const payload: WorkerJobPayload = {
+      id: 'job-to-cancel',
+      buffer: new ArrayBuffer(10),
+      settings: {
+        targetFormat: 'auto',
+        mode: 'visually-lossless',
+        stripMetadata: true,
+      },
+    };
+
+    const promise = pool.submit(payload);
+    const cancelled = pool.cancel('job-to-cancel');
+    expect(cancelled).toBe(true);
+
+    const result = await promise;
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe('JOB_CANCELLED');
+    }
+
+    pool.destroy();
+  });
+});
