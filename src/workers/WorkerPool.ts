@@ -39,7 +39,7 @@ export class WorkerPool {
   }
 
   /**
-   * Sizing formula: hardwareConcurrency - 1, capped lower on mobile.
+   * Leave a CPU thread free and cap concurrent full-resolution codec heaps.
    */
   public static determineOptimalPoolSize(): number {
     if (typeof navigator === 'undefined') return 2;
@@ -53,7 +53,7 @@ export class WorkerPool {
       return Math.min(2, Math.max(1, concurrency - 1));
     }
 
-    return Math.max(1, concurrency - 1);
+    return Math.min(4, Math.max(1, concurrency - 1));
   }
 
   public get size(): number {

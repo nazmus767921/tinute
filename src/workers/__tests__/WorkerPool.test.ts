@@ -4,6 +4,16 @@ import { ok } from '../../pipeline/types';
 import type { WorkerJobPayload } from '../types';
 
 describe('WorkerPool Lifecycle & Fault Isolation', () => {
+  it('caps desktop concurrency to avoid allocating a codec heap per CPU thread', () => {
+    const original = Object.getOwnPropertyDescriptor(navigator, 'hardwareConcurrency');
+    Object.defineProperty(navigator, 'hardwareConcurrency', { configurable: true, value: 128 });
+    try {
+      expect(WorkerPool.determineOptimalPoolSize()).toBeLessThanOrEqual(4);
+    } finally {
+      if (original) Object.defineProperty(navigator, 'hardwareConcurrency', original);
+      else Reflect.deleteProperty(navigator, 'hardwareConcurrency');
+    }
+  });
   it('determines optimal pool size based on hardwareConcurrency - 1', () => {
     const desktopSize = WorkerPool.determineOptimalPoolSize();
     expect(desktopSize).toBeGreaterThanOrEqual(1);

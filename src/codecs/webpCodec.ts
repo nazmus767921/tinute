@@ -50,6 +50,29 @@ export const webpCodec: ImageCodec<WebpEncodeOptions> = {
   },
 
   async encode(image: RawImage, options: WebpEncodeOptions = {}): Promise<ArrayBuffer> {
+    // Native encoding runs in workers too and avoids the WASM CPU cost for lossy WebP.
+    // Canvas cannot guarantee lossless pixels; that path must always use libwebp.
+    if (
+      !options.lossless &&
+      typeof OffscreenCanvas !== 'undefined' &&
+      typeof ImageData !== 'undefined'
+    ) {
+      try {
+        const canvas = new OffscreenCanvas(image.width, image.height);
+        const context = canvas.getContext('2d');
+        if (context) {
+          context.putImageData(new ImageData(image.data, image.width, image.height), 0, 0);
+          const blob = await canvas.convertToBlob({
+            type: 'image/webp',
+            quality: Math.max(0, Math.min(100, options.quality ?? 75)) / 100,
+          });
+          // Browsers can silently return PNG when WebP encoding is unavailable.
+          if (blob.type === 'image/webp') return await blob.arrayBuffer();
+        }
+      } catch {
+        // Unsupported canvas/encoder or allocation failure: use the existing WASM codec.
+      }
+    }
     const encode = await ensureWebpEncoder();
     const imgDataLike = {
       data: image.data,

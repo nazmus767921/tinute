@@ -22,7 +22,7 @@ import {
  * 3. Normalize (RGBA orientation & layout check)
  * 4. Classify (heuristics: colors, edge density, entropy)
  * 5. Plan (candidate encoders and parameter selection)
- * 6. Search (binary search on quality param vs SSIMULACRA2 threshold + slow final encode)
+ * 6. Search (bounded sample quality search + full-resolution verified encode)
  * 7. Guard (never-bigger rule + generational loss warning)
  * 8. Finalize (metadata report and packaging)
  */
@@ -55,7 +55,7 @@ export async function executePipeline(
   const planRes = planOptimization(classRes.value, settings);
   if (!planRes.ok) return planRes;
 
-  // 6. Search (binary search on quality param against SSIMULACRA2 threshold + slow final encode)
+  // 6. Search (sample patches, then verify the full-resolution output)
   const searchRes = await searchAndEncode(normRes.value, planRes.value, settings);
   if (!searchRes.ok) return searchRes;
 

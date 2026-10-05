@@ -7,13 +7,13 @@ test.describe('Tinute Phase 1 Pipeline Workspace & Controls', () => {
     await page.goto('/');
 
     // 1. Verify format selector interaction
-    const formatSelect = page.getByRole('combobox', { name: /output format/i });
+    const formatSelect = page.getByRole('combobox', { name: /target format/i });
     await expect(formatSelect).toBeVisible();
     await formatSelect.selectOption('webp');
     await expect(formatSelect).toHaveValue('webp');
 
     // 2. Verify mode toggle
-    const losslessBtn = page.getByRole('radio', { name: /^lossless$/i });
+    const losslessBtn = page.getByRole('radio', { name: /^bit-exact lossless$/i });
     await losslessBtn.click();
     await expect(losslessBtn).toHaveAttribute('aria-checked', 'true');
 

@@ -53,6 +53,29 @@ function compositeOverWhite(image: RawImage): RawImage {
   return { width: image.width, height: image.height, data: out };
 }
 
+/** Nine original-resolution patches retain texture/detail that resizing would smooth away. */
+function createSearchSample(image: RawImage): RawImage {
+  const patchWidth = Math.min(128, image.width);
+  const patchHeight = Math.min(128, image.height);
+  const width = patchWidth * 3;
+  const height = patchHeight * 3;
+  if (image.width * image.height <= width * height) return image;
+
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (let py = 0; py < 3; py++) {
+    const sourceY = Math.round(((image.height - patchHeight) * py) / 2);
+    for (let px = 0; px < 3; px++) {
+      const sourceX = Math.round(((image.width - patchWidth) * px) / 2);
+      for (let y = 0; y < patchHeight; y++) {
+        const start = ((sourceY + y) * image.width + sourceX) * 4;
+        const destination = ((py * patchHeight + y) * width + px * patchWidth) * 4;
+        data.set(image.data.subarray(start, start + patchWidth * 4), destination);
+      }
+    }
+  }
+  return { width, height, data };
+}
+
 /**
  * Stage 6: Search & Encode
  *
@@ -64,10 +87,10 @@ function compositeOverWhite(image: RawImage): RawImage {
  * - Returns qualityScore: 100.0, isLosslessBitExact: true, iterations: 0.
  *
  * For Visually Lossless Mode:
- * - Binary search on quality parameter `q` against the SSIMULACRA2 threshold (5-7 iterations).
+ * - Binary search on original-resolution sample patches (at most 147,456 pixels).
  * - Fast encoder speed during search iterations.
  * - One final encode at the SLOW high-efficiency setting for maximal compression density.
- * - Decodes final output and evaluates the verified perceptual quality score.
+ * - Verifies the full-resolution output and increases quality if the sample was optimistic.
  */
 export async function searchAndEncode(
   normalized: NormalizedImage,
@@ -136,9 +159,10 @@ export async function searchAndEncode(
 
     // 3. Visually Lossless Mode: Binary search across quality param (JPEG, WebP, AVIF, JXL)
     const threshold = settings.qualityTarget ?? 82;
+    const searchImage = createSearchSample(inputImage);
     let low = config.minQuality;
     let high = config.maxQuality;
-    const targetIterations = 6; // strictly within 5-7 iterations
+    const targetIterations = Math.max(config.minIterations, Math.min(6, config.maxIterations));
 
     let bestPassed: { q: number; score: number } | null = null;
     let iterations = 0;
@@ -166,9 +190,9 @@ export async function searchAndEncode(
         } as JpegEncodeOptions;
       }
 
-      const trialBuffer = await codec.encode(inputImage, fastOptions);
+      const trialBuffer = await codec.encode(searchImage, fastOptions);
       const trialDecoded = await codec.decode(trialBuffer);
-      const trialScore = computePerceptualScore(inputImage, trialDecoded);
+      const trialScore = computePerceptualScore(searchImage, trialDecoded);
 
       if (trialScore >= threshold) {
         bestPassed = { q: trialQ, score: trialScore };
@@ -178,9 +202,7 @@ export async function searchAndEncode(
       }
     }
 
-    const optimalQ = bestPassed
-      ? bestPassed.q
-      : Math.min(config.maxQuality, Math.max(low, high, 80));
+    let optimalQ = bestPassed ? bestPassed.q : Math.min(config.maxQuality, Math.max(low, high, 80));
 
     // One final encode at the SLOW high-efficiency setting
     let slowOptions: CodecEncodeOptions;
@@ -202,9 +224,44 @@ export async function searchAndEncode(
       } as JpegEncodeOptions;
     }
 
-    const finalBuffer = await codec.encode(inputImage, slowOptions);
-    const finalDecoded = await codec.decode(finalBuffer);
-    const finalScore = computePerceptualScore(inputImage, finalDecoded);
+    let finalBuffer = await codec.encode(inputImage, slowOptions);
+    let finalDecoded = await codec.decode(finalBuffer);
+    let finalScore = computePerceptualScore(inputImage, finalDecoded);
+    // Sample/encoder differences must never silently lower the requested quality.
+    // Bound corrective full-image work to two retries; the last uses maximum quality.
+    for (
+      let retry = 0;
+      finalScore < threshold && optimalQ < config.maxQuality && retry < 2;
+      retry++
+    ) {
+      optimalQ =
+        retry === 0
+          ? Math.min(
+              config.maxQuality,
+              optimalQ + Math.max(5, Math.ceil((config.maxQuality - optimalQ) / 2)),
+            )
+          : config.maxQuality;
+      finalBuffer = await codec.encode(inputImage, { ...slowOptions, quality: optimalQ });
+      finalDecoded = await codec.decode(finalBuffer);
+      finalScore = computePerceptualScore(inputImage, finalDecoded);
+    }
+    // Fine colored edges can fail the threshold even at maximum lossy quality
+    // because of chroma subsampling. WebP can preserve these pixels losslessly.
+    if (finalScore < threshold && plan.targetFormat === 'webp') {
+      const losslessOptions: WebpEncodeOptions = { lossless: true, quality: 100, method: 4 };
+      finalBuffer = await codec.encode(inputImage, losslessOptions);
+      finalDecoded = await codec.decode(finalBuffer);
+      finalScore = computePerceptualScore(inputImage, finalDecoded);
+      optimalQ = 100;
+    }
+    if (finalScore < threshold) {
+      return err({
+        code: 'ENCODE_ERROR',
+        message:
+          'Could not meet the requested image quality. Try lossless mode or a different output format.',
+        details: `Verified score ${finalScore}; requested ${threshold}.`,
+      });
+    }
     const isBitExact = verifyBitExact(inputImage, finalDecoded);
     const durationMs = Math.round(performance.now() - startTime);
 

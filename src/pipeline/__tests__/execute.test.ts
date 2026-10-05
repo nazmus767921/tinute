@@ -30,7 +30,7 @@ describe('End-to-End Pipeline Execution', () => {
       expect(res.value.outputBuffer.byteLength).toBeGreaterThan(0);
       expect(res.value.metadataReport.gpsRemoved).toBe(true);
       expect(res.value.durationMs).toBeGreaterThanOrEqual(0);
-      expect(res.value.qualityScore).toBeGreaterThanOrEqual(0);
+      expect(res.value.qualityScore).toBeGreaterThanOrEqual(60);
       expect(res.value.qualityScore).toBeLessThanOrEqual(100);
 
       // Either compressed successfully or guarded by never-bigger
