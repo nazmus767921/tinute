@@ -26,9 +26,13 @@ export function finalizeOptimization(
   _metadata?: MetadataBundle,
 ): Result<FinalPipelineOutput, PipelineError> {
   const metadataReport: StrippedMetadataReport = {
-    gpsRemoved: settings.stripMetadata,
-    exifRemoved: settings.stripMetadata,
-    iccPreserved: true, // Color accuracy preserved
+    gpsRemoved:
+      settings.stripMetadata &&
+      (!guardResult.neverBiggerTriggered || !!guardResult.metadataSanitized),
+    exifRemoved:
+      settings.stripMetadata &&
+      (!guardResult.neverBiggerTriggered || !!guardResult.metadataSanitized),
+    iccPreserved: guardResult.neverBiggerTriggered, // Original ICC is retained only in the container fallback.
   };
 
   return ok({
@@ -41,6 +45,7 @@ export function finalizeOptimization(
     savedBytes: guardResult.savedBytes,
     savingsPercentage: guardResult.savingsPercentage,
     neverBiggerTriggered: guardResult.neverBiggerTriggered,
+    metadataSanitized: !!guardResult.metadataSanitized,
     generationalLossWarning: guardResult.generationalLossWarning,
     qualityScore: guardResult.qualityScore,
     isLosslessBitExact: guardResult.isLosslessBitExact,

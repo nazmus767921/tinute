@@ -7,6 +7,43 @@
 
 const SPILL_DIR_NAME = 'tinute_spill';
 const inMemoryFallback = new Map<string, ArrayBuffer>();
+let storageLease: Promise<boolean> | undefined;
+
+/** A shared browser lock protects live tabs; exclusive startup cleanup removes abandoned output. */
+function acquireStorageLease(): Promise<boolean> {
+  if (storageLease) return storageLease;
+  storageLease = (async () => {
+    if (!isOpfsSupported() || !navigator.locks) return false;
+    try {
+      await navigator.locks.request(
+        'tinute-output-storage',
+        { mode: 'exclusive', ifAvailable: true },
+        async (lock) => {
+          if (lock) {
+            const root = await navigator.storage.getDirectory();
+            try {
+              await root.removeEntry(SPILL_DIR_NAME, { recursive: true });
+            } catch {
+              /* No abandoned directory. */
+            }
+          }
+        },
+      );
+      return await new Promise<boolean>((resolve) => {
+        void navigator.locks
+          .request('tinute-output-storage', { mode: 'shared' }, async () => {
+            resolve(true);
+            // The browser releases this lease when the document is destroyed.
+            await new Promise<void>(() => {});
+          })
+          .catch(() => resolve(false));
+      });
+    } catch {
+      return false;
+    }
+  })();
+  return storageLease;
+}
 
 export function isOpfsSupported(): boolean {
   return (
@@ -17,7 +54,7 @@ export function isOpfsSupported(): boolean {
 }
 
 async function getSpillDirectory(): Promise<FileSystemDirectoryHandle | null> {
-  if (!isOpfsSupported()) return null;
+  if (!(await acquireStorageLease())) return null;
   try {
     const root = await navigator.storage.getDirectory();
     return await root.getDirectoryHandle(SPILL_DIR_NAME, { create: true });
@@ -31,7 +68,7 @@ async function getSpillDirectory(): Promise<FileSystemDirectoryHandle | null> {
  */
 export async function spillToDisk(jobId: string, data: ArrayBuffer | Uint8Array): Promise<boolean> {
   const dir = await getSpillDirectory();
-  const buffer = data instanceof Uint8Array ? data.buffer : data;
+  const buffer = data instanceof Uint8Array ? data.slice().buffer : data;
 
   if (!dir) {
     inMemoryFallback.set(jobId, buffer);

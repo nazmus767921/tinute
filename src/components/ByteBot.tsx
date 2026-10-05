@@ -44,11 +44,11 @@ export const ByteBot: React.FC<ByteBotProps> = ({ mood = 'idle', size = 'md', cl
             cx="50"
             cy="8"
             r={mood === 'hungry' || mood === 'crunching' ? 5.5 : 4}
-            className={`transition-all duration-300 ${
+            className={`transition-[fill,r] duration-300 ${
               mood === 'hungry'
-                ? 'fill-arcade-pink animate-ping'
+                ? 'fill-arcade-pink motion-safe:animate-ping'
                 : mood === 'crunching'
-                  ? 'fill-arcade-yellow animate-pulse'
+                  ? 'fill-arcade-yellow motion-safe:animate-pulse'
                   : mood === 'celebrating'
                     ? 'fill-savings'
                     : 'fill-arcade-cyan'
@@ -149,8 +149,20 @@ export const ByteBot: React.FC<ByteBotProps> = ({ mood = 'idle', size = 'md', cl
         />
 
         {/* Cute Comic Cheek Blush */}
-        <ellipse cx="30" cy="56" rx="3.5" ry="2" className="fill-comic-pink/50 animate-pulse" />
-        <ellipse cx="70" cy="56" rx="3.5" ry="2" className="fill-comic-pink/50 animate-pulse" />
+        <ellipse
+          cx="30"
+          cy="56"
+          rx="3.5"
+          ry="2"
+          className="fill-comic-pink/50 motion-safe:animate-pulse"
+        />
+        <ellipse
+          cx="70"
+          cy="56"
+          rx="3.5"
+          ry="2"
+          className="fill-comic-pink/50 motion-safe:animate-pulse"
+        />
 
         {/* Dynamic Expressions */}
         {mood === 'idle' && (
@@ -191,11 +203,7 @@ export const ByteBot: React.FC<ByteBotProps> = ({ mood = 'idle', size = 'md', cl
               ry="8"
               className="fill-comic-pink/30 stroke-comic-pink stroke-2"
             />
-            <path
-              d="M45 61 Q50 56 55 61"
-              fill="var(--color-comic-pink)"
-              opacity="0.8"
-            />
+            <path d="M45 61 Q50 56 55 61" fill="var(--color-comic-pink)" opacity="0.8" />
             {/* Little pixel teeth */}
             <rect x="46" y="51" width="3" height="3" fill="#ffffff" rx="1" />
             <rect x="51" y="51" width="3" height="3" fill="#ffffff" rx="1" />
@@ -229,11 +237,11 @@ export const ByteBot: React.FC<ByteBotProps> = ({ mood = 'idle', size = 'md', cl
             {/* Comic sparks */}
             <polygon
               points="28,34 30,37 33,37 31,39 32,42 29,40 27,42 28,39 25,37 28,37"
-              className="fill-comic-yellow animate-ping"
+              className="fill-comic-yellow motion-safe:animate-ping"
             />
             <polygon
               points="72,34 74,37 77,37 75,39 76,42 73,40 71,42 72,39 69,37 72,37"
-              className="fill-comic-yellow animate-ping"
+              className="fill-comic-yellow motion-safe:animate-ping"
             />
           </g>
         )}

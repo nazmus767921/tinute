@@ -8,7 +8,7 @@ const config: Config = {
       colors: {
         canvas: 'var(--color-canvas)',
         surface: 'var(--color-surface)',
-        border: 'var(--color-border)',
+        border: { DEFAULT: 'var(--color-border)', subtle: 'var(--color-border-subtle)' },
         text: 'var(--color-text)',
         muted: 'var(--color-muted)',
         accent: {

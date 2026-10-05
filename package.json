@@ -17,7 +17,9 @@
     "test:e2e": "playwright test",
     "check:budget": "node scripts/check-bundle-budget.mjs",
     "typecheck": "tsc --noEmit",
-    "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm check:budget"
+    "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm check:budget",
+    "test:release": "playwright test --config playwright.release.config.ts",
+    "verify:release": "pnpm verify && pnpm test:release"
   },
   "keywords": [],
   "author": "",
@@ -70,5 +72,9 @@
     "typescript": "~5.4.5",
     "vite": "^5.4.21",
     "vitest": "^1.6.1"
+  },
+  "packageManager": "pnpm@12.4.1",
+  "engines": {
+    "node": ">=22"
   }
 }

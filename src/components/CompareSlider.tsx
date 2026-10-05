@@ -1,175 +1,190 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { usePipelineStore } from '../store/pipelineStore';
+import { Slider } from './ui/controls';
 import { CompareControls } from './CompareControls';
+import { readJobOutput } from '../utils/output';
 import { createPreviewUrl } from '../utils/preview';
-import { ArrowLeftRight } from '@/icons';
+import { formatBytes } from '../utils/format';
+import { X, AlertCircle } from '@/icons';
 
 export const CompareSlider: React.FC = () => {
   const { jobs, selectedCompareJobId, setSelectedCompareJobId } = usePipelineStore();
-  const selectedJob = jobs.find(
-    (j) => j.id === selectedCompareJobId && j.status === 'done' && j.result,
-  );
-
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [splitPos, setSplitPos] = useState(50);
+  const job = jobs.find((j) => j.id === selectedCompareJobId && j.status === 'done' && j.result);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const [split, setSplit] = useState(50);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [isDraggingSlider, setIsDraggingSlider] = useState(false);
-  const [isPanning, setIsPanning] = useState(false);
-  const panStartRef = useRef({ x: 0, y: 0 });
-
-  const [origUrl, setOrigUrl] = useState<string | null>(null);
-  const [optUrl, setOptUrl] = useState<string | null>(null);
+  const [urls, setUrls] = useState<{ original: string; smaller: string } | null>(null);
+  const [failed, setFailed] = useState(false);
+  const close = () => setSelectedCompareJobId(null);
 
   useEffect(() => {
-    if (!selectedJob?.result) return;
-    let cancelled = false;
-    let revokes: Array<() => void> = [];
+    if (!job || !dialog.current) return;
+    const trigger = document.activeElement as HTMLElement | null;
+    const modal = dialog.current;
+    modal.showModal();
+    return () => {
+      modal.close();
+      if (trigger?.isConnected) trigger.focus();
+    };
+  }, [job]);
 
-    const loadUrls = async () => {
-      const origBuf =
-        typeof selectedJob.file.arrayBuffer === 'function'
-          ? await selectedJob.file.arrayBuffer()
-          : await new Response(selectedJob.file).arrayBuffer();
-      const orig = await createPreviewUrl(origBuf, selectedJob.result!.originalFormat);
-      const opt = await createPreviewUrl(
-        selectedJob.result!.outputBuffer,
-        selectedJob.result!.outputFormat,
-      );
-
-      if (!cancelled) {
-        setOrigUrl(orig.url);
-        setOptUrl(opt.url);
-        revokes = [orig.revoke, opt.revoke];
-      } else {
-        orig.revoke();
-        opt.revoke();
+  useEffect(() => {
+    if (!job?.result) return;
+    let disposed = false;
+    const revokes: Array<() => void> = [];
+    setUrls(null);
+    setFailed(false);
+    setZoom(1);
+    setSplit(50);
+    setPan({ x: 0, y: 0 });
+    const load = async () => {
+      try {
+        const buffer = await job.file.arrayBuffer();
+        const original = await createPreviewUrl(buffer, job.result!.originalFormat);
+        if (disposed) {
+          original.revoke();
+          return;
+        }
+        revokes.push(original.revoke);
+        const smaller = await createPreviewUrl(await readJobOutput(job), job.result!.outputFormat);
+        if (disposed) {
+          smaller.revoke();
+          return;
+        }
+        revokes.push(smaller.revoke);
+        setUrls({ original: original.url, smaller: smaller.url });
+      } catch {
+        if (!disposed) setFailed(true);
       }
     };
-
-    void loadUrls();
+    void load();
     return () => {
-      cancelled = true;
-      revokes.forEach((r) => r());
+      disposed = true;
+      revokes.forEach((revoke) => revoke());
     };
-  }, [selectedJob]);
+  }, [job]);
 
-  const updateSplitFromPointer = useCallback((clientX: number) => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    setSplitPos(Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100)));
-  }, []);
-
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if ((e.target as HTMLElement).dataset.handle) {
-      setIsDraggingSlider(true);
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    } else {
-      setIsPanning(true);
-      panStartRef.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
-      containerRef.current?.setPointerCapture(e.pointerId);
-    }
-  };
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (isDraggingSlider) updateSplitFromPointer(e.clientX);
-    else if (isPanning)
-      setPan({ x: e.clientX - panStartRef.current.x, y: e.clientY - panStartRef.current.y });
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowLeft') setSplitPos((p) => Math.max(0, p - 1));
-    else if (e.key === 'ArrowRight') setSplitPos((p) => Math.min(100, p + 1));
-    else if (e.key === 'PageDown') setSplitPos((p) => Math.max(0, p - 10));
-    else if (e.key === 'PageUp') setSplitPos((p) => Math.min(100, p + 10));
-    else if (e.key === 'Home') setSplitPos(0);
-    else if (e.key === 'End') setSplitPos(100);
-    else if (e.key === 'Escape') {
-      e.preventDefault();
-      setSelectedCompareJobId(null);
-    }
-  };
-
-  if (!selectedJob?.result || !origUrl || !optUrl) return null;
-  const res = selectedJob.result;
-
+  if (!job?.result) return null;
+  const result = job.result;
+  const transform = `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`;
   return (
-    <section
-      aria-label="Before and After Comparison"
-      className="w-full rounded-comic overflow-hidden border-2 border-border bg-[#3f3f46] shadow-comic relative select-none"
+    <dialog
+      ref={dialog}
+      aria-labelledby="compare-heading"
+      className="comparison-dialog"
+      onCancel={(e) => {
+        e.preventDefault();
+        close();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          close();
+        }
+      }}
     >
-      <CompareControls
-        zoom={zoom}
-        onZoomIn={() => setZoom((z) => Math.min(4, Number((z + 0.5).toFixed(1))))}
-        onZoomOut={() => setZoom((z) => Math.max(0.5, Number((z - 0.5).toFixed(1))))}
-        onResetZoom={() => {
-          setZoom(1);
-          setPan({ x: 0, y: 0 });
-        }}
-        onClose={() => setSelectedCompareJobId(null)}
-        qualityScore={res.qualityScore}
-        isLossless={res.isLosslessBitExact}
-        originalFormat={res.originalFormat}
-        outputFormat={res.outputFormat}
-        originalSize={selectedJob.originalSize}
-        finalSize={res.finalSize}
-        savingsPercentage={res.savingsPercentage}
-      />
-
-      <div
-        ref={containerRef}
-        role="slider"
-        tabIndex={0}
-        aria-label="Image comparison slider"
-        aria-valuenow={Math.round(splitPos)}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        onKeyDown={handleKeyDown}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={() => {
-          setIsDraggingSlider(false);
-          setIsPanning(false);
-        }}
-        className="relative w-full h-[380px] sm:h-[480px] overflow-hidden cursor-grab active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-      >
-        {/* Layer 1: Optimized Image (Bottom) */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <img
-            src={optUrl}
-            alt="Optimized"
-            style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}
-            className="max-w-full max-h-full object-contain pointer-events-none"
-          />
-        </div>
-
-        {/* Layer 2: Original Image (Top, split clipped) */}
-        <div
-          style={{ clipPath: `inset(0 ${100 - splitPos}% 0 0)` }}
-          className="absolute inset-0 flex items-center justify-center pointer-events-none"
-        >
-          <img
-            src={origUrl}
-            alt="Original"
-            style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}
-            className="max-w-full max-h-full object-contain pointer-events-none"
-          />
-        </div>
-
-        {/* Split Divider Line & Handle */}
-        <div
-          data-handle="true"
-          style={{ left: `${splitPos}%` }}
-          className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_8px_rgba(0,0,0,0.5)] cursor-ew-resize z-10 -ml-[2px]"
-        >
-          <div
-            data-handle="true"
-            className="absolute top-1/2 -translate-y-1/2 -left-4 w-8 h-8 rounded-full bg-white text-stone-900 border-2 border-stone-900 shadow-comic-sm flex items-center justify-center text-xs font-bold select-none cursor-ew-resize hover:scale-110 active:scale-95 transition-transform duration-100"
-          >
-            <ArrowLeftRight className="w-3.5 h-3.5 text-stone-900" strokeWidth={2.5} aria-hidden="true" />
+      <div className="comparison-content">
+        <header className="comparison-header">
+          <div className="min-w-0">
+            <h2 id="compare-heading" className="text-lg font-bold text-balance">
+              Compare images
+            </h2>
+            <p className="mt-1 text-xs text-muted break-words [overflow-wrap:anywhere]">
+              {job.name}
+            </p>
           </div>
+          <button
+            type="button"
+            className="btn btn-quiet shrink-0 px-3"
+            aria-label="Close comparison"
+            onClick={close}
+          >
+            <X size={20} aria-hidden="true" />
+          </button>
+        </header>
+        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-xs sm:text-sm text-muted tabular-nums">
+          <span>Original · {formatBytes(job.originalSize)}</span>
+          <span>Smaller · {formatBytes(result.finalSize)}</span>
         </div>
+        <div className="comparison-image">
+          {failed ? (
+            <p role="alert" className="m-5 flex max-w-sm items-start gap-2 text-sm text-pretty">
+              <AlertCircle size={20} className="shrink-0" aria-hidden="true" />
+              Could not load this preview. You can still download your image. Close comparison to
+              return to your images.
+            </p>
+          ) : !urls ? (
+            <p role="status" className="text-sm text-muted">
+              Loading preview…
+            </p>
+          ) : (
+            <>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <img
+                  src={urls.smaller}
+                  alt="Smaller image"
+                  onError={() => setFailed(true)}
+                  className="image-outline max-w-full max-h-full object-contain"
+                  style={{ transform }}
+                />
+              </div>
+              <div
+                className="absolute inset-0 flex items-center justify-center"
+                style={{ clipPath: `inset(0 ${100 - split}% 0 0)` }}
+              >
+                <img
+                  src={urls.original}
+                  alt="Original image"
+                  onError={() => setFailed(true)}
+                  className="image-outline max-w-full max-h-full object-contain"
+                  style={{ transform }}
+                />
+              </div>
+              <div
+                aria-hidden="true"
+                className="comparison-divider"
+                style={{ left: `${split}%` }}
+              />
+            </>
+          )}
+        </div>
+        {urls && !failed && (
+          <div className="comparison-toolbar">
+            <div className="flex items-center justify-between text-xs text-muted">
+              <span className="font-semibold text-text">Image comparison</span>
+              <span>Original ↔ Smaller</span>
+            </div>
+            <Slider
+              label="Image comparison"
+              value={split}
+              valueText={`${split}% original image`}
+              onValueChange={setSplit}
+            />
+            <CompareControls
+              zoom={zoom}
+              onZoomIn={() => setZoom((z) => Math.min(4, z + 0.5))}
+              onZoomOut={() => setZoom((z) => Math.max(0.5, z - 0.5))}
+              onResetZoom={() => {
+                setZoom(1);
+                setPan({ x: 0, y: 0 });
+              }}
+              onPan={(x, y) => setPan((p) => ({ x: p.x + x, y: p.y + y }))}
+            />
+            <details className="mt-2">
+              <summary className="min-h-11 cursor-pointer text-xs text-muted flex items-center">
+                Image details
+              </summary>
+              <p className="pb-2 text-xs text-muted tabular-nums text-pretty">
+                {result.originalFormat.toUpperCase()} → {result.outputFormat.toUpperCase()} ·{' '}
+                {result.isLosslessBitExact
+                  ? 'Every detail preserved'
+                  : `Quality score: ${result.qualityScore.toFixed(1)} / 100`}
+              </p>
+            </details>
+          </div>
+        )}
       </div>
-    </section>
+    </dialog>
   );
 };

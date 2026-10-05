@@ -4,6 +4,40 @@ import { ok } from '../../pipeline/types';
 import type { WorkerJobPayload } from '../types';
 
 describe('WorkerPool Lifecycle & Fault Isolation', () => {
+  it('settles a hung worker job and replaces the worker after its deadline', async () => {
+    vi.useFakeTimers();
+    const workers: Worker[] = [];
+    const pool = new WorkerPool({
+      maxWorkers: 1,
+      jobTimeoutMs: 20,
+      workerFactory: () => {
+        const worker = {
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          postMessage: vi.fn(),
+          terminate: vi.fn(),
+        } as unknown as Worker;
+        workers.push(worker);
+        return worker;
+      },
+    });
+    try {
+      const pending = pool.submit({
+        id: 'hung',
+        buffer: new ArrayBuffer(1),
+        settings: { targetFormat: 'auto', mode: 'lossless', stripMetadata: true },
+      });
+      await vi.advanceTimersByTimeAsync(20);
+      const result = await pending;
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.message).toMatch(/too long/i);
+      expect(workers).toHaveLength(2);
+      expect(workers[0]!.terminate).toHaveBeenCalled();
+    } finally {
+      pool.destroy();
+      vi.useRealTimers();
+    }
+  });
   it('caps desktop concurrency to avoid allocating a codec heap per CPU thread', () => {
     const original = Object.getOwnPropertyDescriptor(navigator, 'hardwareConcurrency');
     Object.defineProperty(navigator, 'hardwareConcurrency', { configurable: true, value: 128 });

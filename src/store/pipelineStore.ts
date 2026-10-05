@@ -21,6 +21,7 @@ export interface ImageJob {
   status: JobStatus;
   result: FinalPipelineOutput | null;
   error: PipelineError | null;
+  resultStorageId?: string;
 }
 
 interface PipelineState {
@@ -33,6 +34,8 @@ interface PipelineState {
   isZipping: boolean;
   zipProgress: number;
   batchError: string | null;
+  zipError: string | null;
+  resetSettings: () => void;
   initPool: () => void;
   addFiles: (files: File[]) => Promise<void>;
   cancelJob: (id: string) => void;
@@ -48,14 +51,59 @@ interface PipelineState {
   setMaxDimension: (maxDimension?: number) => void;
 }
 
+export const MAX_BATCH_INPUT_BYTES = 100 * 1024 * 1024;
+
+export const RECOMMENDED_SETTINGS: UserPipelineSettings = {
+  targetFormat: 'auto',
+  mode: 'visually-lossless',
+  stripMetadata: true,
+  qualityTarget: 80,
+};
+
+const attempts = new Map<string, symbol>();
+const hasPending = (jobs: ImageJob[]) =>
+  jobs.some((j) => j.status === 'queued' || j.status === 'processing');
+
+async function processSubmission(
+  jobs: ImageJob[],
+  get: () => PipelineState,
+  set: (
+    update: Partial<PipelineState> | ((state: PipelineState) => Partial<PipelineState>),
+  ) => void,
+) {
+  const pool = get().workerPool;
+  if (!pool) return;
+  const token = Symbol('submission');
+  const submissionId = crypto.randomUUID();
+  jobs.forEach((j) => attempts.set(j.id, token));
+  const settings = { ...get().settings };
+  if (settings.limits) settings.limits = { ...settings.limits };
+  const isCancelled = (id: string) =>
+    attempts.get(id) !== token || !get().jobs.some((j) => j.id === id && j.status !== 'cancelled');
+  await runBatchOrchestrator(
+    pool,
+    jobs,
+    settings,
+    (id, updates) => {
+      if (isCancelled(id)) return;
+      set((state) => {
+        const nextJobs = state.jobs.map((j) => (j.id === id ? { ...j, ...updates } : j));
+        return { jobs: nextJobs, isProcessing: hasPending(nextJobs) };
+      });
+    },
+    (announcement) => set({ statusAnnouncement: announcement }),
+    isCancelled,
+    (id) => `${id}-${submissionId}`,
+  );
+  jobs.forEach((j) => {
+    if (attempts.get(j.id) === token) attempts.delete(j.id);
+  });
+  set((state) => ({ isProcessing: hasPending(state.jobs) }));
+}
+
 export const usePipelineStore = create<PipelineState>((set, get) => ({
   jobs: [],
-  settings: {
-    targetFormat: 'auto',
-    mode: 'visually-lossless',
-    stripMetadata: true,
-    qualityTarget: 80,
-  },
+  settings: { ...RECOMMENDED_SETTINGS },
   workerPool: null,
   isProcessing: false,
   selectedCompareJobId: null,
@@ -63,10 +111,18 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
   isZipping: false,
   zipProgress: 0,
   batchError: null,
+  zipError: null,
+  resetSettings: () => set({ settings: { ...RECOMMENDED_SETTINGS } }),
 
   initPool: () => {
     if (!get().workerPool && typeof window !== 'undefined') {
-      set({ workerPool: new WorkerPool() });
+      try {
+        set({ workerPool: new WorkerPool() });
+      } catch {
+        const message =
+          'Could not start image processing. Refresh the page or try an updated browser.';
+        set({ batchError: message, statusAnnouncement: message });
+      }
     }
   },
 
@@ -88,15 +144,23 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
 
     const currentCount = get().jobs.length;
     if (currentCount + files.length > MAX_FILES_PER_BATCH) {
-      const msg = `Batch limit exceeded: Maximum ${MAX_FILES_PER_BATCH} files allowed per batch (currently ${currentCount}, tried adding ${files.length}).`;
+      const msg = `You can add up to ${MAX_FILES_PER_BATCH} images at a time. There are ${currentCount} here already. Clear finished images or choose fewer files.`;
       set({ batchError: msg, statusAnnouncement: msg });
       return;
     }
 
+    const totalBytes = [
+      ...get().jobs.map((job) => job.originalSize),
+      ...files.map((file) => file.size),
+    ].reduce((sum, size) => sum + size, 0);
+    if (totalBytes > MAX_BATCH_INPUT_BYTES) {
+      const message =
+        'These images exceed the 100 MB workspace limit. Clear finished images or add a smaller batch.';
+      set({ batchError: message, statusAnnouncement: message });
+      return;
+    }
     get().initPool();
-    const pool = get().workerPool;
-    if (!pool) return;
-
+    if (!get().workerPool) return;
     const newJobs: ImageJob[] = files.map((file) => ({
       id: `${file.name}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       file,
@@ -111,34 +175,25 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
       jobs: [...state.jobs, ...newJobs],
       isProcessing: true,
       batchError: null,
-      statusAnnouncement: `Added ${files.length} file(s) to optimization queue.`,
+      statusAnnouncement: `Added ${files.length} images. Making them smaller.`,
     }));
-
-    // Dispatch batch orchestrator with concurrent worker scheduling
-    await runBatchOrchestrator(
-      pool,
-      get().jobs,
-      get().settings,
-      (id, updates) => {
-        set((state) => ({
-          jobs: state.jobs.map((j) => (j.id === id ? { ...j, ...updates } : j)),
-          selectedCompareJobId:
-            state.selectedCompareJobId ??
-            (updates.status === 'done' ? id : state.selectedCompareJobId),
-        }));
-      },
-      (announcement) => set({ statusAnnouncement: announcement }),
-    );
-
-    set({ isProcessing: false });
+    await processSubmission(newJobs, get, set);
   },
 
   cancelJob: (id: string) => {
     get().workerPool?.cancel(id);
-    set((state) => ({
-      jobs: state.jobs.map((j) => (j.id === id ? { ...j, status: 'cancelled' } : j)),
-      statusAnnouncement: 'Job cancelled.',
-    }));
+    set((state) => {
+      const jobs = state.jobs.map((j) =>
+        j.id === id && (j.status === 'queued' || j.status === 'processing')
+          ? { ...j, status: 'cancelled' as const }
+          : j,
+      );
+      return {
+        jobs,
+        isProcessing: hasPending(jobs),
+        statusAnnouncement: 'Image stopped. You can try again.',
+      };
+    });
   },
 
   cancelAll: () => {
@@ -159,36 +214,52 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
 
   retryJob: async (id: string) => {
     const targetJob = get().jobs.find((j) => j.id === id);
-    if (!targetJob) return;
+    if (!targetJob || (targetJob.status !== 'error' && targetJob.status !== 'cancelled')) return;
+    const retry = { ...targetJob, status: 'queued' as const, error: null, result: null };
+    get().initPool();
+    if (!get().workerPool) return;
     set((state) => ({
-      jobs: state.jobs.map((j) =>
-        j.id === id ? { ...j, status: 'queued', error: null, result: null } : j,
-      ),
+      jobs: state.jobs.map((j) => (j.id === id ? retry : j)),
+      isProcessing: true,
     }));
-    await get().addFiles([targetJob.file]);
+    await processSubmission([retry], get, set);
   },
 
   clearCompleted: () => {
-    const completed = get().jobs.filter((j) => j.status === 'done' || j.status === 'cancelled');
-    completed.forEach((j) => void removeSpill(j.id));
+    const completed = get().jobs.filter(
+      (j) => j.status === 'done' || j.status === 'cancelled' || j.status === 'error',
+    );
+    completed.forEach((j) => void removeSpill(j.resultStorageId ?? j.id));
     set((state) => ({
-      jobs: state.jobs.filter((j) => j.status !== 'done' && j.status !== 'cancelled'),
+      jobs: state.jobs.filter(
+        (j) => j.status !== 'done' && j.status !== 'cancelled' && j.status !== 'error',
+      ),
       selectedCompareJobId: null,
       statusAnnouncement: 'Cleared completed jobs.',
     }));
   },
 
   exportZip: async () => {
-    set({ isZipping: true, zipProgress: 0, statusAnnouncement: 'Preparing ZIP archive...' });
+    if (get().isZipping) return;
+    set({
+      isZipping: true,
+      zipProgress: 0,
+      zipError: null,
+      statusAnnouncement: 'Preparing your download...',
+    });
     try {
       const blob = await exportBatchAsZip(get().jobs, {
-        onProgress: (pct, file) =>
-          set({ zipProgress: pct, statusAnnouncement: `Zipping (${pct}%): ${file}` }),
+        onProgress: (processed, total) => {
+          const percent = total > 0 ? Math.round((processed / total) * 100) : 0;
+          set({ zipProgress: percent, statusAnnouncement: `Preparing download: ${percent}%.` });
+        },
       });
       triggerZipDownload(blob);
       set({ statusAnnouncement: 'ZIP archive downloaded successfully.' });
-    } catch (err) {
-      set({ statusAnnouncement: `ZIP export failed: ${String(err)}` });
+    } catch {
+      const message =
+        'Could not prepare your download. Try again, or download images individually.';
+      set({ zipError: message, statusAnnouncement: message });
     } finally {
       set({ isZipping: false, zipProgress: 0 });
     }

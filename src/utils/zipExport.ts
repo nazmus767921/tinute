@@ -1,7 +1,7 @@
 import { Zip, ZipPassThrough } from 'fflate';
 import type { ImageJob } from '../store/pipelineStore';
 import { getFileExtension } from './format';
-import { retrieveFromDisk } from '../storage/opfs';
+import { readJobOutput } from './output';
 
 export interface ZipExportOptions {
   suffix?: string; // default: '.optimized'
@@ -81,16 +81,7 @@ export async function createStreamingZip(
           const archiveName = fileNameMap.get(job.id);
           if (!archiveName || !job.result) continue;
 
-          // Retrieve buffer from job result or OPFS spill
-          let buffer = job.result.outputBuffer;
-          try {
-            const diskBuffer = await retrieveFromDisk(job.id);
-            if (diskBuffer) {
-              buffer = diskBuffer;
-            }
-          } catch {
-            // Use in-memory buffer if disk read fails
-          }
+          const buffer = await readJobOutput(job);
 
           const fileStream = new ZipPassThrough(archiveName);
           zip.add(fileStream);
@@ -122,7 +113,8 @@ export function triggerFileDownload(blob: Blob, filename: string): void {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  // Keep the blob alive long enough for Safari to begin reading it.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 export function triggerZipDownload(

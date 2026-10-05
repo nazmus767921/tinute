@@ -53,3 +53,9 @@ describe('OPFS Spill Storage with In-Memory Fallback', () => {
     expect(await retrieveFromDisk('job-b')).toBeNull();
   });
 });
+
+it('stores only the bytes of a typed-array view', async () => {
+  const bytes = new Uint8Array([9, 1, 2, 8]);
+  await spillToDisk('view', bytes.subarray(1, 3));
+  expect(Array.from(new Uint8Array((await retrieveFromDisk('view'))!))).toEqual([1, 2]);
+});

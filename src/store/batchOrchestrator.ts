@@ -1,7 +1,7 @@
 import type { WorkerPool } from '../workers/WorkerPool';
 import type { ImageJob } from './pipelineStore';
 import type { UserPipelineSettings, FinalPipelineOutput, PipelineError } from '../pipeline/types';
-import { spillToDisk } from '../storage/opfs';
+import { spillToDisk, removeSpill } from '../storage/opfs';
 
 export const MAX_FILES_PER_BATCH = 100;
 export const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
@@ -25,6 +25,8 @@ export async function runBatchOrchestrator(
   settings: UserPipelineSettings,
   onJobUpdate: JobUpdateCallback,
   onAnnouncement?: (msg: string) => void,
+  isCancelled: (id: string) => boolean = () => false,
+  getStorageId: (id: string) => string = (id) => id,
 ): Promise<void> {
   const queuedJobs = jobs.filter((j) => j.status === 'queued');
   if (queuedJobs.length === 0) return;
@@ -45,6 +47,7 @@ export async function runBatchOrchestrator(
       while (activeWorkers < concurrency && queueIndex < queuedJobs.length) {
         const job = queuedJobs[queueIndex++];
         if (!job) break;
+        if (isCancelled(job.id)) continue;
 
         // Enforce individual 50MB limit
         if (job.originalSize > MAX_FILE_SIZE_BYTES) {
@@ -65,20 +68,37 @@ export async function runBatchOrchestrator(
           try {
             // Read buffer just-in-time to conserve heap memory
             const buffer = await job.file.arrayBuffer();
+            if (isCancelled(job.id)) return;
             const result = await pool.submit({ id: job.id, buffer, settings });
 
+            if (isCancelled(job.id)) return;
             if (result.ok) {
               const resValue: FinalPipelineOutput = result.value;
               // Spill output buffer to OPFS to free main-thread memory
-              await spillToDisk(job.id, resValue.outputBuffer);
+              const resultStorageId = getStorageId(job.id);
+              await spillToDisk(resultStorageId, resValue.outputBuffer);
+              if (isCancelled(job.id)) {
+                await removeSpill(resultStorageId);
+                return;
+              }
 
-              onJobUpdate(job.id, { status: 'done', result: resValue, error: null });
+              onJobUpdate(job.id, {
+                status: 'done',
+                result: {
+                  ...resValue,
+                  outputBuffer: new ArrayBuffer(0),
+                  spillRef: resultStorageId,
+                },
+                error: null,
+                resultStorageId,
+              });
               onAnnouncement?.(`Completed ${job.name}: -${resValue.savingsPercentage}%.`);
             } else {
               onJobUpdate(job.id, { status: 'error', error: result.error });
               onAnnouncement?.(`Error processing ${job.name}: ${result.error.message}`);
             }
           } catch (err) {
+            if (isCancelled(job.id)) return;
             onJobUpdate(job.id, {
               status: 'error',
               error: { code: 'WORKER_CRASHED', message: String(err) },
@@ -90,6 +110,7 @@ export async function runBatchOrchestrator(
           }
         })();
       }
+      if (queueIndex >= queuedJobs.length && activeWorkers === 0) resolve();
     };
 
     launchNext();

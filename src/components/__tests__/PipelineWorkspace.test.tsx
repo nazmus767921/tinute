@@ -1,61 +1,36 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { PipelineWorkspace } from '../PipelineWorkspace';
-import { usePipelineStore } from '../../store/pipelineStore';
+import { usePipelineStore, RECOMMENDED_SETTINGS } from '../../store/pipelineStore';
 
-describe('PipelineWorkspace Component', () => {
-  beforeEach(() => {
+describe('simple workspace', () => {
+  beforeEach(() =>
     usePipelineStore.setState({
       jobs: [],
-      settings: {
-        targetFormat: 'auto',
-        mode: 'visually-lossless',
-        stripMetadata: true,
-        qualityTarget: 80,
-      },
+      settings: { ...RECOMMENDED_SETTINGS },
       isProcessing: false,
       selectedCompareJobId: null,
-    });
-  });
-
-  it('renders target format selector with Auto, JPEG, PNG, WebP, AVIF, JXL, etc.', () => {
+      batchError: null,
+    }),
+  );
+  it('starts with one obvious action and hides expert choices', () => {
     render(<PipelineWorkspace />);
-
-    const select = screen.getByRole('combobox', { name: /target format/i });
-    expect(select).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: /^auto/i })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: /^jpeg$/i })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: /^png$/i })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: /^webp$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Choose images' })).toBeInTheDocument();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Advanced settings'));
+    expect(screen.getByRole('combobox', { name: 'Output format' })).toBeInTheDocument();
   });
-
-  it('renders compression mode selector and toggles between Visually Lossless and Bit-Exact Lossless', () => {
+  it('shows custom settings even after closing the disclosure', () => {
     render(<PipelineWorkspace />);
-
-    const losslessRadio = screen.getByRole('radio', { name: /bit-exact lossless/i });
-    expect(losslessRadio).toHaveAttribute('aria-checked', 'false');
-
-    fireEvent.click(losslessRadio);
-    expect(usePipelineStore.getState().settings.mode).toBe('lossless');
-    expect(losslessRadio).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(screen.getByText('Advanced settings'));
+    fireEvent.click(screen.getByRole('combobox', { name: 'Output format' }));
+    fireEvent.click(screen.getByRole('option', { name: 'PNG' }));
+    fireEvent.click(screen.getByText('Advanced settings'));
+    expect(screen.getByText('Custom settings')).toBeInTheDocument();
   });
-
-  it('displays quality slider in Visually Lossless mode and updates qualityTarget', () => {
+  it('shows rejected batches even without result rows', () => {
+    usePipelineStore.setState({ batchError: 'Choose fewer images.' });
     render(<PipelineWorkspace />);
-
-    const slider = screen.getByLabelText(/quality target:/i);
-    expect(slider).toBeInTheDocument();
-
-    fireEvent.change(slider, { target: { value: '90' } });
-    expect(usePipelineStore.getState().settings.qualityTarget).toBe(90);
-  });
-
-  it('renders large dashed dropzone with accessible region role on empty state', () => {
-    render(<PipelineWorkspace />);
-
-    const dropzone = screen.getByRole('region', { name: /image dropzone/i });
-    expect(dropzone).toBeInTheDocument();
-    expect(dropzone).toHaveAttribute('tabindex', '0');
-    expect(screen.getByRole('button', { name: /browse files/i })).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Choose fewer images.');
   });
 });
