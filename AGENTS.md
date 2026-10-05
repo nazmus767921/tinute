@@ -136,6 +136,13 @@ outerRadius = innerRadius + padding
   - Inset: `-outline-offset-1`
   - Never use tinted palette neutrals (zinc, slate) as image outlines.
 
+### K. Shared Custom Controls (Invariant)
+
+- All visible selects, checkboxes, radio buttons, and sliders **MUST** use the reusable custom primitives in `src/components/ui/controls.tsx`. Never introduce native `<select>`, `<input type="checkbox">`, `<input type="radio">`, or `<input type="range">` in application UI.
+- Build and maintain these components locally; do not install shadcn or another component library to replace them. Theme choices use the shared segmented radio group.
+- Preserve accessible names, explicit focus, APG keyboard behavior, persistent selected states, and 44px touch targets. Custom styling never excuses reduced accessibility.
+- Semantic buttons and native file inputs remain appropriate. Hidden form inputs may exist inside a primitive for form submission, but must not create duplicate interactive controls.
+
 ---
 
 ## 5. Pre-Completion Verification Checklist

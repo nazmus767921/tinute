@@ -24,19 +24,23 @@ export function guardOptimization(
   encoded: EncodeResult,
   inputFormat: ImageFormat,
   mode: OptimizationMode,
+  options: { fallbackBuffer?: ArrayBuffer | null } = {},
 ): Result<GuardResult, PipelineError> {
   const originalSize = originalBuffer.byteLength;
   const encodedSize = encoded.outputBuffer.byteLength;
 
-  // 1. Never-Bigger Rule: Revert to original if output didn't shrink
-  if (encodedSize >= originalSize) {
+  const fallback = options.fallbackBuffer === undefined ? originalBuffer : options.fallbackBuffer;
+  // Privacy and requested transforms take precedence over reverting to unsafe/unmodified input.
+  if (fallback && encodedSize >= fallback.byteLength) {
+    const savedBytes = originalSize - fallback.byteLength;
     return ok({
-      outputBuffer: originalBuffer,
+      outputBuffer: fallback,
       format: inputFormat,
       originalSize,
-      finalSize: originalSize,
-      savedBytes: 0,
-      savingsPercentage: 0,
+      finalSize: fallback.byteLength,
+      savedBytes,
+      savingsPercentage: Math.round((savedBytes / originalSize) * 100),
+      metadataSanitized: fallback !== originalBuffer,
       neverBiggerTriggered: true,
       generationalLossWarning: false,
       qualityScore: 100.0,

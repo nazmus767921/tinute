@@ -1,63 +1,30 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Dropzone } from '../Dropzone';
 import { usePipelineStore } from '../../store/pipelineStore';
 
-describe('Dropzone Component', () => {
-  it('renders standard full dropzone with keyboard accessibility', () => {
+describe('image selection', () => {
+  it('submits selected files and supports selecting the same image again', () => {
+    const addFiles = vi.fn();
+    usePipelineStore.setState({ addFiles });
     render(<Dropzone />);
-
-    const region = screen.getByRole('region', { name: /image dropzone/i });
-    expect(region).toBeInTheDocument();
-    expect(region).toHaveAttribute('tabindex', '0');
-
-    const button = screen.getByRole('button', { name: /browse files/i });
-    expect(button).toBeInTheDocument();
+    const image = new File(['x'], 'photo.png', { type: 'image/png' });
+    fireEvent.change(screen.getByLabelText('Choose images'), { target: { files: [image] } });
+    expect(addFiles).toHaveBeenCalledWith([image]);
+    expect(screen.getByRole('button', { name: 'Choose images' }).tagName).toBe('BUTTON');
   });
-
-  it('triggers file input on Enter or Space key press', () => {
+  it('supports drag and drop without making the entire region an interactive control', () => {
+    const addFiles = vi.fn();
+    usePipelineStore.setState({ addFiles });
     render(<Dropzone />);
-    const region = screen.getByRole('region', { name: /image dropzone/i });
-    const input = screen.getByLabelText(/file upload input/i);
-
-    const clickSpy = vi.spyOn(input, 'click');
-    fireEvent.keyDown(region, { key: 'Enter' });
-    expect(clickSpy).toHaveBeenCalled();
+    const image = new File(['x'], 'photo.png');
+    const region = screen.getByRole('region', { name: 'Add images' });
+    fireEvent.drop(region, { dataTransfer: { files: [image] } });
+    expect(addFiles).toHaveBeenCalledWith([image]);
+    expect(region).not.toHaveAttribute('tabindex');
   });
-
-  it('handles drag over and drag leave states', () => {
-    render(<Dropzone />);
-    const region = screen.getByRole('region', { name: /image dropzone/i });
-
-    fireEvent.dragOver(region);
-    expect(region.className).toContain('border-accent');
-
-    fireEvent.dragLeave(region);
-    expect(region.className).not.toContain('scale-[1.005]');
-  });
-
-  it('renders compact dropzone when compact prop is true', () => {
-    render(<Dropzone compact={true} />);
-
-    const compactRegion = screen.getByRole('region', { name: /add more images/i });
-    expect(compactRegion).toBeInTheDocument();
-    expect(screen.getByText(/drop more images here/i)).toBeInTheDocument();
-  });
-
-  it('adds files to pipeline store on file drop', () => {
-    const addFilesSpy = vi.fn();
-    usePipelineStore.setState({ addFiles: addFilesSpy });
-
-    render(<Dropzone />);
-    const region = screen.getByRole('region', { name: /image dropzone/i });
-
-    const file = new File(['fake-image-bytes'], 'test.jpg', { type: 'image/jpeg' });
-    fireEvent.drop(region, {
-      dataTransfer: {
-        files: [file],
-      },
-    });
-
-    expect(addFilesSpy).toHaveBeenCalledWith([file]);
+  it('offers a compact add-more action', () => {
+    render(<Dropzone compact />);
+    expect(screen.getByRole('button', { name: 'Add more images' })).toBeInTheDocument();
   });
 });

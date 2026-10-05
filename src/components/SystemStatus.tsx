@@ -8,6 +8,7 @@ import {
   ChevronDown,
   Terminal,
 } from '@/icons';
+import { WorkerPool } from '../workers/WorkerPool';
 import { arcadeAudio } from '../utils/arcadeAudio';
 
 export const SystemStatus: React.FC = () => {
@@ -17,7 +18,7 @@ export const SystemStatus: React.FC = () => {
   const hasSharedArrayBuffer =
     typeof window !== 'undefined' && typeof window.SharedArrayBuffer !== 'undefined';
   const concurrency = typeof navigator !== 'undefined' ? navigator.hardwareConcurrency || 4 : 4;
-  const workerPoolTarget = Math.max(1, concurrency - 1);
+  const workerPoolTarget = WorkerPool.determineOptimalPoolSize();
 
   const statusItems = useMemo(
     () => [
@@ -56,7 +57,7 @@ export const SystemStatus: React.FC = () => {
         name: 'Worker Pool Target',
         value: `${workerPoolTarget} threads (${concurrency} cores)`,
         ok: true,
-        desc: 'Sized to hardwareConcurrency - 1 for zero UI jank.',
+        desc: 'Bounded concurrency keeps codec memory use under control.',
         icon: <Cpu className="w-4 h-4 text-arcade-cyan" strokeWidth={1.75} aria-hidden="true" />,
       },
       {
@@ -85,19 +86,19 @@ export const SystemStatus: React.FC = () => {
     >
       {/* Comic Secret Lab Diagnostics Bar */}
       <div className="p-3.5 sm:px-4 flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-canvas border-2 border-border flex items-center justify-center text-comic-cyan shadow-comic-sm">
             <Terminal className="w-4 h-4" strokeWidth={2.2} aria-hidden="true" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               <h2
                 id="system-diagnostics-heading"
-                className="text-xs font-bold tracking-wider uppercase text-text flex items-center gap-1.5"
+                className="text-xs font-bold tracking-wider uppercase text-text flex min-w-0 items-center gap-1.5 text-balance"
               >
                 <span>Environment & Security Diagnostics</span>
                 <span
-                  className="w-2 h-2 rounded-full bg-savings animate-pulse inline-block"
+                  className="w-2 h-2 rounded-full bg-savings motion-safe:animate-pulse shrink-0 inline-block"
                   aria-hidden="true"
                 />
               </h2>
@@ -107,7 +108,9 @@ export const SystemStatus: React.FC = () => {
             </div>
             <p className="text-xs text-muted mt-0.5 hidden sm:block">
               {isIsolated ? 'WASM SIMD Multi-threading Armed' : 'Single-thread fallback'} •{' '}
-              <span className="font-mono tabular-nums font-semibold">{concurrency} Cores Active</span>
+              <span className="font-mono tabular-nums font-semibold">
+                {concurrency} Cores Active
+              </span>
             </p>
           </div>
         </div>

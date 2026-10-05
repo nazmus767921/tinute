@@ -11,6 +11,7 @@ export {
   ArrowLeftRight,
   Award,
   Ban,
+  Check,
   CheckCircle2,
   ChevronDown,
   Columns,

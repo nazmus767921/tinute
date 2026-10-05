@@ -52,3 +52,11 @@ if (typeof File !== 'undefined' && typeof File.prototype.arrayBuffer !== 'functi
     });
   };
 }
+
+// jsdom has no top-layer dialog implementation; browser coverage verifies focus containment.
+HTMLDialogElement.prototype.showModal = function () {
+  this.setAttribute('open', '');
+};
+HTMLDialogElement.prototype.close = function () {
+  this.removeAttribute('open');
+};

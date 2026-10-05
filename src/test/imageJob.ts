@@ -1,0 +1,28 @@
+import type { ImageJob } from '../store/pipelineStore';
+export const imageJob = (overrides: Partial<ImageJob> = {}): ImageJob => ({
+  id: 'photo',
+  file: new File(['image'], 'photo.png', { type: 'image/png' }),
+  name: 'photo.png',
+  originalSize: 2000,
+  status: 'done',
+  error: null,
+  result: {
+    id: 'photo',
+    outputBuffer: new ArrayBuffer(1000),
+    outputFormat: 'webp',
+    originalFormat: 'png',
+    originalSize: 2000,
+    finalSize: 1000,
+    savedBytes: 1000,
+    savingsPercentage: 50,
+    neverBiggerTriggered: false,
+    generationalLossWarning: false,
+    qualityScore: 84.5,
+    isLosslessBitExact: false,
+    classification: 'photo',
+    mode: 'visually-lossless',
+    metadataReport: { gpsRemoved: true, exifRemoved: true, iccPreserved: true },
+    durationMs: 20,
+  },
+  ...overrides,
+});

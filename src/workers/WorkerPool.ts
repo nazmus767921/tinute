@@ -8,6 +8,7 @@ export interface WorkerInstance {
   proxy: Comlink.Remote<WorkerRpcApi>;
   isBusy: boolean;
   activeJobId: string | null;
+  timeout?: ReturnType<typeof setTimeout>;
 }
 
 export interface QueuedJob {
@@ -18,6 +19,7 @@ export interface QueuedJob {
 
 export interface WorkerPoolConfig {
   maxWorkers?: number;
+  jobTimeoutMs?: number;
   workerFactory?: () => Worker;
 }
 
@@ -28,6 +30,7 @@ export class WorkerPool {
   private readonly poolSize: number;
   private readonly workerFactory: () => Worker;
   private isDestroyed = false;
+  private readonly jobTimeoutMs: number;
 
   constructor(config: WorkerPoolConfig = {}) {
     this.workerFactory =
@@ -35,7 +38,13 @@ export class WorkerPool {
       (() => new Worker(new URL('./pipeline.worker.ts', import.meta.url), { type: 'module' }));
 
     this.poolSize = config.maxWorkers ?? WorkerPool.determineOptimalPoolSize();
-    this.initPool();
+    this.jobTimeoutMs = config.jobTimeoutMs ?? 120_000;
+    try {
+      this.initPool();
+    } catch (error) {
+      this.destroy();
+      throw error;
+    }
   }
 
   /**
@@ -50,7 +59,7 @@ export class WorkerPool {
       (typeof navigator.maxTouchPoints === 'number' && navigator.maxTouchPoints > 1);
 
     if (isMobile) {
-      return Math.min(2, Math.max(1, concurrency - 1));
+      return 1;
     }
 
     return Math.min(4, Math.max(1, concurrency - 1));
@@ -95,6 +104,8 @@ export class WorkerPool {
   }
 
   private handleWorkerCrash(instance: WorkerInstance, errorEvent: ErrorEvent): void {
+    if (!this.workers.includes(instance)) return;
+    if (instance.timeout) clearTimeout(instance.timeout);
     const crashedJobId = instance.activeJobId;
 
     // Terminate and discard crashed worker
@@ -172,6 +183,7 @@ export class WorkerPool {
     // 2. If running on an active worker, terminate worker and respawn
     const busyWorker = this.workers.find((w) => w.activeJobId === jobId);
     if (busyWorker) {
+      if (busyWorker.timeout) clearTimeout(busyWorker.timeout);
       try {
         busyWorker.worker.terminate();
       } catch {
@@ -212,17 +224,27 @@ export class WorkerPool {
     availableWorker.isBusy = true;
     availableWorker.activeJobId = job.payload.id;
     this.activeJobMap.set(job.payload.id, job);
+    const timeout = setTimeout(() => {
+      if (this.activeJobMap.get(job.payload.id) === job) {
+        this.handleWorkerCrash(availableWorker, {
+          message: 'Processing took too long. Try a smaller image or reduce image dimensions.',
+        } as ErrorEvent);
+      }
+    }, this.jobTimeoutMs);
+    availableWorker.timeout = timeout;
 
     (async () => {
       try {
         // Zero-copy pixel buffer transfer to worker
         const transferPayload = Comlink.transfer(job.payload, [job.payload.buffer]);
         const result = await availableWorker.proxy.processJob(transferPayload);
+        if (this.activeJobMap.get(job.payload.id) !== job) return;
         this.activeJobMap.delete(job.payload.id);
         availableWorker.isBusy = false;
         availableWorker.activeJobId = null;
         job.resolve(result);
       } catch (error) {
+        if (this.activeJobMap.get(job.payload.id) !== job) return;
         this.activeJobMap.delete(job.payload.id);
         availableWorker.isBusy = false;
         availableWorker.activeJobId = null;
@@ -234,6 +256,8 @@ export class WorkerPool {
           }),
         );
       } finally {
+        clearTimeout(timeout);
+        if (availableWorker.timeout === timeout) delete availableWorker.timeout;
         this.drainQueue();
       }
     })();
@@ -251,7 +275,10 @@ export class WorkerPool {
     }
     this.queue = [];
 
+    for (const job of this.activeJobMap.values())
+      job.resolve(err({ code: 'JOB_CANCELLED', message: 'Worker pool shut down.' }));
     for (const w of this.workers) {
+      if (w.timeout) clearTimeout(w.timeout);
       try {
         w.worker.terminate();
       } catch {

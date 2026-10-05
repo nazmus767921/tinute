@@ -1,41 +1,33 @@
-import { describe, it, expect } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import { App } from '../App';
-
-describe('App component', () => {
-  it('renders application header with title and tagline', () => {
+import { usePipelineStore, RECOMMENDED_SETTINGS } from '../store/pipelineStore';
+describe('simple application shell', () => {
+  beforeEach(() =>
+    usePipelineStore.setState({
+      jobs: [],
+      settings: { ...RECOMMENDED_SETTINGS },
+      batchError: null,
+      selectedCompareJobId: null,
+    }),
+  );
+  it('keeps branding and accessible utilities in a compact header', () => {
     render(<App />);
-
     const header = screen.getByRole('banner');
-    expect(within(header).getByRole('heading', { level: 1, name: /tinute/i })).toBeInTheDocument();
-    expect(within(header).getByText('Bake tiny images in minutes with Tinutes')).toBeInTheDocument();
-    expect(within(header).getByText('Private & Secure')).toBeInTheDocument();
+    expect(within(header).getByText('Tinute')).toBeInTheDocument();
+    expect(within(header).getAllByRole('button')).toHaveLength(1);
+    expect(within(header).getByRole('radiogroup', { name: 'Color theme' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Choose images' })).toBeInTheDocument();
   });
-
-  it('renders dropzone region with keyboard focusable attribute', () => {
+  it('discloses technical diagnostics rather than showing them upfront', () => {
     render(<App />);
-
-    const dropzone = screen.getByRole('region', { name: /image dropzone/i });
-    expect(dropzone).toBeInTheDocument();
-    expect(dropzone).toHaveAttribute('tabIndex', '0');
-    expect(screen.getByText(/Drop images here to convert & optimize/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /browse files/i })).toBeInTheDocument();
+    expect(screen.getByText('Technical details').closest('details')).not.toHaveAttribute('open');
+    expect(screen.getByText('Images stay on your device.')).toBeInTheDocument();
   });
-
-  it('renders ARIA live region for batch progress and accessibility announcements', () => {
+  it('retains live announcements', () => {
     render(<App />);
-
-    const liveRegion = document.getElementById('accessibility-announcer');
-    expect(liveRegion).toBeInTheDocument();
-    expect(liveRegion).toHaveAttribute('aria-live', 'polite');
-    expect(liveRegion).toHaveAttribute('aria-atomic', 'true');
-  });
-
-  it('renders footer confirming private local compression', () => {
-    render(<App />);
-
-    expect(
-      screen.getByText(/all compression happens privately on your device/i),
-    ).toBeInTheDocument();
+    const live = document.getElementById('accessibility-announcer');
+    expect(live).toHaveAttribute('aria-live', 'polite');
+    expect(live).toHaveAttribute('aria-atomic', 'true');
   });
 });

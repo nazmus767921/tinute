@@ -1,3 +1,4 @@
+import { isAnimatedContainer, sanitizeOriginalMetadata } from './metadata/privacy';
 import { sniffImage } from './sniff';
 import { decodeImage } from './decode';
 import { normalizeImage } from './normalize';
@@ -12,6 +13,7 @@ import {
   type PipelineError,
   type UserPipelineSettings,
   DEFAULT_PIPELINE_LIMITS,
+  err,
 } from './types';
 
 /**
@@ -39,6 +41,13 @@ export async function executePipeline(
   if (!sniffRes.ok) return sniffRes;
   const { format: originalFormat } = sniffRes.value;
 
+  if (isAnimatedContainer(inputBuffer, originalFormat)) {
+    return err({
+      code: 'UNSUPPORTED_FORMAT',
+      message: 'Animated images are not supported yet. Choose a still image.',
+    });
+  }
+
   // 2. Decode (to raw pixels + decompression-bomb pixel limit)
   const decodeRes = await decodeImage(inputBuffer, originalFormat, limits);
   if (!decodeRes.ok) return decodeRes;
@@ -60,8 +69,26 @@ export async function executePipeline(
   if (!searchRes.ok) return searchRes;
 
   // 7. Guard (never-bigger rule + generational loss warning)
-  const guardRes = guardOptimization(inputBuffer, searchRes.value, originalFormat, settings.mode);
+  const resized =
+    normRes.value.image.width !== decodeRes.value.image.width ||
+    normRes.value.image.height !== decodeRes.value.image.height;
+  const fallbackBuffer = resized
+    ? null
+    : settings.stripMetadata
+      ? sanitizeOriginalMetadata(inputBuffer, originalFormat)
+      : inputBuffer;
+  const guardRes = guardOptimization(inputBuffer, searchRes.value, originalFormat, settings.mode, {
+    fallbackBuffer,
+  });
   if (!guardRes.ok) return guardRes;
+
+  if (guardRes.value.finalSize > limits.maxFileSizeBytes) {
+    return err({
+      code: 'ENCODE_ERROR',
+      message:
+        'The result exceeds the output size limit. Reduce image dimensions in Advanced settings and try again.',
+    });
+  }
 
   // 8. Finalize (metadata report and packaging)
   const totalDurationMs = Math.round(performance.now() - startTime);
