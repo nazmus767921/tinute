@@ -26,7 +26,7 @@ async function main() {
   // Render transparent standard icon
   function renderStandardIcon(size) {
     const scale = size / 48;
-    const offsetY = (size - 46 * scale) / 2;
+    const offsetY = (size - 48 * scale) / 2;
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
       <g transform="translate(0, ${offsetY}) scale(${scale})">
         ${innerSvg}
@@ -41,7 +41,7 @@ async function main() {
     const glyphSize = size * safeScaleRatio;
     const scale = glyphSize / 48;
     const offsetX = (size - glyphSize) / 2;
-    const offsetY = (size - 46 * scale) / 2;
+    const offsetY = (size - 48 * scale) / 2;
 
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
       <rect width="${size}" height="${size}" fill="#0B0B0C"/>

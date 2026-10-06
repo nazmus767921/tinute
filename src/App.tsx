@@ -20,14 +20,18 @@ export const App: React.FC = () => {
         </a>
         <header className="app-header">
           <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <div className="brand-bot hidden min-[400px]:block" aria-hidden="true">
+            <a
+              href="/"
+              className="flex items-center gap-2.5 rounded-xl transition-transform duration-150 active:scale-[0.96] motion-reduce:transform-none"
+              aria-label="Tinute home"
+            >
+              <div className="brand-bot" aria-hidden="true">
                 <ByteBot size="sm" />
               </div>
               <span className="text-xl font-bold tracking-[-0.05em]">
                 Tinute<span className="text-comic-pink">.</span>
               </span>
-            </div>
+            </a>
             <div className="flex items-center gap-1 sm:gap-2">
               <AudioToggle />
               <ThemeToggle />

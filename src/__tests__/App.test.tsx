@@ -14,6 +14,7 @@ describe('simple application shell', () => {
   it('keeps branding and accessible utilities in a compact header', () => {
     render(<App />);
     const header = screen.getByRole('banner');
+    expect(within(header).getByRole('link', { name: 'Tinute home' })).toBeInTheDocument();
     expect(within(header).getByText('Tinute')).toBeInTheDocument();
     expect(within(header).getAllByRole('button')).toHaveLength(1);
     expect(within(header).getByRole('radiogroup', { name: 'Color theme' })).toBeInTheDocument();

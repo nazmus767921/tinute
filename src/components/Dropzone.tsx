@@ -7,6 +7,7 @@ import { arcadeAudio } from '../utils/arcadeAudio';
 export const Dropzone: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
   const input = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
+  const [pet, setPet] = useState(false);
   const addFiles = usePipelineStore((s) => s.addFiles);
   const label = compact ? 'Add more images' : 'Choose images';
   const handleFiles = (files: FileList | null) => {
@@ -63,11 +64,20 @@ export const Dropzone: React.FC<{ compact?: boolean }> = ({ compact = false }) =
           </p>
           <div className="mascot-stage" aria-hidden="true">
             <div className="mascot-orbit" />
-            <div className="mascot-sticker">
-              <ByteBot size="lg" mood={dragging ? 'hungry' : 'idle'} />
+            <div
+              className="mascot-sticker transition-[transform,box-shadow] duration-200 ease-out hover:-rotate-3 hover:scale-105 active:scale-[0.96] cursor-pointer motion-reduce:transform-none select-none"
+              onClick={(e) => {
+                e.stopPropagation();
+                arcadeAudio.playClick();
+                setPet(true);
+                window.setTimeout(() => setPet(false), 1600);
+              }}
+              title="Click ByteBot!"
+            >
+              <ByteBot size="lg" mood={dragging ? 'hungry' : pet ? 'wink' : 'idle'} />
             </div>
             <span className="mascot-caption">
-              {dragging ? 'Drop them here!' : 'Big pixels. Tiny bites.'}
+              {dragging ? 'Drop them here!' : pet ? 'Beep boop! Ready!' : 'Big pixels. Tiny bites.'}
             </span>
           </div>
         </>
