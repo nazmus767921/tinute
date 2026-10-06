@@ -19,10 +19,15 @@ describe('simple application shell', () => {
     expect(within(header).getByRole('radiogroup', { name: 'Color theme' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Choose images' })).toBeInTheDocument();
   });
-  it('keeps the footer focused on privacy', () => {
+  it('keeps the footer focused on privacy and product attribution', () => {
     render(<App />);
     expect(screen.queryByText('Technical details')).not.toBeInTheDocument();
     expect(screen.queryByText(/environment & security diagnostics/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Bohuvuj' })).toHaveAttribute(
+      'href',
+      'https://bohuvuj.com',
+    );
+    expect(screen.getByText(/a product of bohuvuj/i)).toBeInTheDocument();
   });
   it('retains live announcements', () => {
     render(<App />);

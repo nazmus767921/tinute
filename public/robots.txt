@@ -1,0 +1,5 @@
+# Robots.txt for Tinute
+User-agent: *
+Allow: /
+
+Sitemap: https://tinute.bohuvuj.com/sitemap.xml

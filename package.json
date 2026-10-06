@@ -5,8 +5,9 @@
   "main": "index.js",
   "scripts": {
     "copy:wasm": "node scripts/copy-wasm.mjs",
+    "generate:icons": "node scripts/generate-icons.mjs",
     "dev": "pnpm copy:wasm && vite",
-    "build": "pnpm copy:wasm && tsc && vite build",
+    "build": "pnpm copy:wasm && pnpm generate:icons && tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "format:check": "prettier --check .",
@@ -71,6 +72,7 @@
     "tailwindcss": "^3.4.19",
     "typescript": "~5.4.5",
     "vite": "^5.4.21",
+    "vite-plugin-pwa": "0.21.1",
     "vitest": "^1.6.1"
   },
   "packageManager": "pnpm@12.4.1",

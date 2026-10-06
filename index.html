@@ -3,12 +3,77 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tinute — In-Browser Image Converter &amp; Optimizer</title>
     <meta
       name="description"
-      content="Make images smaller in your browser. Free, private image compression with no uploads or sign-up."
+      content="Make images smaller directly in your browser. Free, 100% private image compression with WebAssembly. No server uploads, no sign-up. A product of Bohuvuj."
     />
-    <meta name="theme-color" content="#0B0B0C" />
-    <title>Tinute — Image Converter & Optimizer</title>
+    <link rel="canonical" href="https://tinute.bohuvuj.com/" />
+
+    <!-- Favicons & Touch Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+
+    <!-- Progressive Web App & Mobile Web App Meta -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Tinute" />
+    <meta name="application-name" content="Tinute" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0B0B0C" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#FFFFFF" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://tinute.bohuvuj.com/" />
+    <meta property="og:title" content="Tinute — In-Browser Image Converter &amp; Optimizer" />
+    <meta
+      property="og:description"
+      content="Make images smaller directly in your browser. Free, 100% private image compression with WebAssembly. Zero uploads. A product of Bohuvuj."
+    />
+    <meta property="og:image" content="https://tinute.bohuvuj.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Tinute — In-Browser Image Converter &amp; Optimizer by Bohuvuj" />
+    <meta property="og:site_name" content="Tinute" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://tinute.bohuvuj.com/" />
+    <meta name="twitter:title" content="Tinute — In-Browser Image Converter &amp; Optimizer" />
+    <meta
+      name="twitter:description"
+      content="Free, 100% private in-browser image optimization powered by WebAssembly. No uploads, no servers. A product of Bohuvuj."
+    />
+    <meta name="twitter:image" content="https://tinute.bohuvuj.com/og-image.png" />
+
+    <!-- Schema.org JSON-LD Structured Data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Tinute",
+        "url": "https://tinute.bohuvuj.com/",
+        "description": "Make images smaller in your browser. Free, 100% private image compression with WebAssembly. Zero server uploads.",
+        "applicationCategory": "MultimediaApplication",
+        "operatingSystem": "All",
+        "browserRequirements": "Requires WebAssembly and modern browser capabilities",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "creator": {
+          "@type": "Organization",
+          "name": "Bohuvuj",
+          "url": "https://bohuvuj.com"
+        }
+      }
+    </script>
 
     <!-- Self-hosted font preloads for critical text rendering -->
     <link rel="preload" href="/fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin />

@@ -47,10 +47,24 @@ export const App: React.FC = () => {
             {statusAnnouncement}
           </div>
         </main>
-        <footer className="mx-auto w-full max-w-[920px] px-4 pb-6 text-xs text-muted sm:px-6">
-          <p className="text-pretty">
-            Made for smaller files and bigger ideas. Free. Private. Yours.
-          </p>
+        <footer className="mx-auto w-full max-w-[920px] px-4 pb-8 pt-4 text-xs text-muted sm:px-6">
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between border-t border-border-subtle pt-4">
+            <p className="text-pretty">
+              Made for smaller files and bigger ideas. Free. Private. Yours.
+            </p>
+            <p className="text-pretty">
+              <span className="tabular-nums">© {new Date().getFullYear()}</span>{' '}
+              <a
+                href="https://bohuvuj.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-text underline decoration-muted/40 underline-offset-2 transition-colors duration-150 ease-out hover:text-comic-pink hover:decoration-comic-pink/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-comic-pink/50 rounded-[2px]"
+              >
+                Bohuvuj
+              </a>
+              . A product of Bohuvuj. All rights reserved.
+            </p>
+          </div>
         </footer>
       </div>
       {process.env.NODE_ENV === 'development' && <Agentation endpoint="http://localhost:5173" />}
