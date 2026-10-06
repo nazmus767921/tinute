@@ -75,7 +75,7 @@ export const SettingsPanel: React.FC = () => {
             {
               value: 'lossless',
               label: 'Keep every detail',
-              description: 'Bit-exact lossless · may save less space',
+              description: 'May save less space',
             },
           ]}
         />

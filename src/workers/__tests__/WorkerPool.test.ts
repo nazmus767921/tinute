@@ -83,7 +83,6 @@ describe('WorkerPool Lifecycle & Fault Isolation', () => {
                     savedBytes: 50,
                     savingsPercentage: 50,
                     neverBiggerTriggered: false,
-                    generationalLossWarning: false,
                     classification: 'photo',
                     mode: 'visually-lossless',
                     metadataReport: { gpsRemoved: true, exifRemoved: true, iccPreserved: true },

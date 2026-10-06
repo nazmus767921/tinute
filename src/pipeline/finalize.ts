@@ -48,7 +48,6 @@ export function finalizeOptimization(
     savingsPercentage: guardResult.savingsPercentage,
     neverBiggerTriggered: guardResult.neverBiggerTriggered,
     metadataSanitized: !!guardResult.metadataSanitized,
-    generationalLossWarning: guardResult.generationalLossWarning,
     qualityScore: guardResult.qualityScore,
     qualityVerified: guardResult.qualityVerified,
     isLosslessBitExact: guardResult.isLosslessBitExact,

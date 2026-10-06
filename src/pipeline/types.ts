@@ -132,7 +132,6 @@ export interface GuardResult {
   savingsPercentage: number;
   neverBiggerTriggered: boolean;
   metadataSanitized?: boolean;
-  generationalLossWarning: boolean;
   qualityScore: number;
   qualityVerified?: boolean | undefined;
   isLosslessBitExact: boolean;
@@ -155,7 +154,6 @@ export interface FinalPipelineOutput {
   savingsPercentage: number;
   neverBiggerTriggered: boolean;
   metadataSanitized?: boolean;
-  generationalLossWarning: boolean;
   qualityScore: number;
   qualityVerified?: boolean | undefined;
   isLosslessBitExact: boolean;

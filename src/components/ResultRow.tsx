@@ -1,15 +1,6 @@
 import { createPreviewUrl } from '../utils/preview';
 import React, { useState, useEffect } from 'react';
-import {
-  FileImage,
-  CheckCircle2,
-  AlertCircle,
-  Download,
-  Columns,
-  RotateCw,
-  X,
-  ChevronDown,
-} from '@/icons';
+import { FileImage, CheckCircle2, AlertCircle, Download, Columns, RotateCw, X } from '@/icons';
 import type { ImageJob } from '../store/pipelineStore';
 import { formatBytes } from '../utils/format';
 import { downloadImageJob } from '../utils/download';
@@ -169,40 +160,11 @@ export const ResultRow: React.FC<ResultRowProps> = React.memo(
             </span>
           </p>
         )}
-        {result?.generationalLossWarning && (
-          <p className="result-warning">
-            <AlertCircle size={18} aria-hidden="true" />
-            <span>
-              This image was compressed before. Compressing it again may reduce detail. Compare it
-              before downloading.
-            </span>
-          </p>
-        )}
         {downloadError && (
           <p role="alert" className="result-warning">
             <AlertCircle size={18} aria-hidden="true" />
             {downloadError}
           </p>
-        )}
-        {ready && (
-          <details className="result-details">
-            <summary className="flex min-h-11 cursor-pointer items-center gap-1.5 text-xs text-muted list-none">
-              Details
-              <ChevronDown size={14} className="disclosure-chevron" aria-hidden="true" />
-            </summary>
-            <div className="pb-3 text-xs text-muted space-y-1 text-pretty">
-              <p>
-                {result.originalFormat.toUpperCase()} → {result.outputFormat.toUpperCase()}
-              </p>
-              <p className="tabular-nums">
-                {result.isLosslessBitExact
-                  ? 'Every detail preserved · bit-exact lossless'
-                  : result.qualityVerified === false
-                    ? 'High-quality compression · compare before downloading'
-                    : `Quality score: ${result.qualityScore.toFixed(1)} / 100`}
-              </p>
-            </div>
-          </details>
         )}
       </article>
     );

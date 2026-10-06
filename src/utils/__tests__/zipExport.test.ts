@@ -25,7 +25,6 @@ describe('ZIP Export and Collision Handling', () => {
       savedBytes: data.byteLength,
       savingsPercentage: 50,
       neverBiggerTriggered: false,
-      generationalLossWarning: false,
       qualityScore: 90,
       isLosslessBitExact: false,
       classification: 'photo',

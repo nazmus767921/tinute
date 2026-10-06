@@ -205,9 +205,6 @@
   .result-actions {
     @apply grid grid-cols-2 gap-3 pb-3;
   }
-  .result-details {
-    @apply border-t border-border-subtle;
-  }
   .result-warning {
     @apply mb-3 flex items-start gap-2 text-sm leading-relaxed text-lossy-text text-pretty;
     overflow-wrap: anywhere;
@@ -271,9 +268,6 @@
   }
   .skip-link {
     @apply sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-4 focus:z-50 focus:rounded-xl focus:bg-surface focus:px-4 focus:py-3;
-  }
-  .technical-disclosure[open] {
-    @apply w-full;
   }
   .comparison-dialog {
     @apply border-0 bg-surface text-text p-0;

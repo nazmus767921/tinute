@@ -33,7 +33,7 @@ import {
  * 4. Classify (heuristics: colors, edge density, entropy)
  * 5. Plan (candidate encoders and parameter selection)
  * 6. Encode (one lossy preset encode; verify pixels only for lossless output)
- * 7. Guard (never-bigger rule + generational loss warning)
+ * 7. Guard (never-bigger rule)
  * 8. Finalize (metadata report and packaging)
  */
 export async function executePipeline(
@@ -102,7 +102,7 @@ export async function executePipeline(
         : inputBuffer
       : null;
   const finish = (encoded: EncodeResult, plan: PipelinePlan) => {
-    const guarded = guardOptimization(inputBuffer, encoded, originalFormat, settings.mode, {
+    const guarded = guardOptimization(inputBuffer, encoded, originalFormat, {
       fallbackBuffer: fallback,
     });
     if (!guarded.ok) return guarded;

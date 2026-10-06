@@ -14,10 +14,11 @@ const props = {
   onRetry: vi.fn(),
 };
 describe('readable image cards', () => {
-  it('shows plain savings and puts technical scores in details', () => {
+  it('shows plain savings without technical details', () => {
     render(<ResultRow {...props} job={imageJob()} />);
     expect(screen.getByText('50% smaller')).toBeInTheDocument();
-    expect(screen.getByText(/quality score/i).closest('details')).not.toHaveAttribute('open');
+    expect(screen.queryByText(/compressed before/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/quality score/i)).not.toBeInTheDocument();
   });
   it('explains original-kept outcomes', () => {
     const job = imageJob();

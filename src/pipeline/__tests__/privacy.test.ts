@@ -81,7 +81,6 @@ describe('privacy-safe original fallback', () => {
       original,
       { outputBuffer: new ArrayBuffer(120), format: 'webp', qualityScore: 90, durationMs: 0 },
       'png',
-      'visually-lossless',
       { fallbackBuffer: clean },
     );
     expect(result.ok).toBe(true);
@@ -96,7 +95,6 @@ describe('privacy-safe original fallback', () => {
       new ArrayBuffer(10),
       { outputBuffer: new ArrayBuffer(20), format: 'png', qualityScore: 100, durationMs: 0 },
       'heic',
-      'lossless',
       { fallbackBuffer: null },
     );
     if (!result.ok) throw new Error('guard failed');
@@ -108,7 +106,6 @@ describe('privacy-safe original fallback', () => {
       new ArrayBuffer(10),
       { outputBuffer: new ArrayBuffer(20), format: 'png', qualityScore: 100, durationMs: 0 },
       'png',
-      'lossless',
     );
     if (!guarded.ok) throw new Error('guard failed');
     const output = finalizeOptimization(

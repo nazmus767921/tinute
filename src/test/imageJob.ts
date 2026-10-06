@@ -16,7 +16,6 @@ export const imageJob = (overrides: Partial<ImageJob> = {}): ImageJob => ({
     savedBytes: 1000,
     savingsPercentage: 50,
     neverBiggerTriggered: false,
-    generationalLossWarning: false,
     qualityScore: 84.5,
     isLosslessBitExact: false,
     classification: 'photo',

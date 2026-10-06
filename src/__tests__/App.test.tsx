@@ -19,10 +19,10 @@ describe('simple application shell', () => {
     expect(within(header).getByRole('radiogroup', { name: 'Color theme' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Choose images' })).toBeInTheDocument();
   });
-  it('discloses technical diagnostics rather than showing them upfront', () => {
+  it('keeps the footer focused on privacy', () => {
     render(<App />);
-    expect(screen.getByText('Technical details').closest('details')).not.toHaveAttribute('open');
-    expect(screen.getByText('Images stay on your device.')).toBeInTheDocument();
+    expect(screen.queryByText('Technical details')).not.toBeInTheDocument();
+    expect(screen.queryByText(/environment & security diagnostics/i)).not.toBeInTheDocument();
   });
   it('retains live announcements', () => {
     render(<App />);

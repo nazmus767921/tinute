@@ -189,19 +189,6 @@ export const CompareSlider: React.FC = () => {
               }}
               onPan={(x, y) => setPan((p) => ({ x: p.x + x, y: p.y + y }))}
             />
-            <details className="mt-2">
-              <summary className="min-h-11 cursor-pointer text-xs text-muted flex items-center">
-                Image details
-              </summary>
-              <p className="pb-2 text-xs text-muted tabular-nums text-pretty">
-                {result.originalFormat.toUpperCase()} → {result.outputFormat.toUpperCase()} ·{' '}
-                {result.isLosslessBitExact
-                  ? 'Every detail preserved'
-                  : result.qualityVerified === false
-                    ? 'High-quality compression · compare before downloading'
-                    : `Quality score: ${result.qualityScore.toFixed(1)} / 100`}
-              </p>
-            </details>
           </div>
         )}
       </div>

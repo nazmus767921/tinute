@@ -13,7 +13,7 @@ describe('Pipeline Stage 7: Guard (Never-Bigger Rule & Safety)', () => {
       durationMs: 40,
     };
 
-    const res = guardOptimization(originalBuffer, biggerEncoded, 'png', 'visually-lossless');
+    const res = guardOptimization(originalBuffer, biggerEncoded, 'png');
     expect(res.ok).toBe(true);
 
     if (res.ok) {
@@ -37,7 +37,7 @@ describe('Pipeline Stage 7: Guard (Never-Bigger Rule & Safety)', () => {
       durationMs: 50,
     };
 
-    const res = guardOptimization(originalBuffer, equalEncoded, 'jpeg', 'visually-lossless');
+    const res = guardOptimization(originalBuffer, equalEncoded, 'jpeg');
     expect(res.ok).toBe(true);
 
     if (res.ok) {
@@ -58,7 +58,7 @@ describe('Pipeline Stage 7: Guard (Never-Bigger Rule & Safety)', () => {
       durationMs: 80,
     };
 
-    const res = guardOptimization(originalBuffer, smallerEncoded, 'jpeg', 'visually-lossless');
+    const res = guardOptimization(originalBuffer, smallerEncoded, 'jpeg');
     expect(res.ok).toBe(true);
 
     if (res.ok) {
@@ -68,38 +68,6 @@ describe('Pipeline Stage 7: Guard (Never-Bigger Rule & Safety)', () => {
       expect(res.value.savingsPercentage).toBe(60);
       expect(res.value.qualityScore).toBe(91.4);
       expect(res.value.isLosslessBitExact).toBe(false);
-    }
-  });
-
-  it('flags generational loss warning when converting lossy JPEG to lossy WebP', () => {
-    const originalBuffer = new Uint8Array(500).buffer;
-    const encoded: EncodeResult = {
-      outputBuffer: new Uint8Array(300).buffer,
-      format: 'webp',
-      qualityScore: 84.0,
-      durationMs: 60,
-    };
-
-    const res = guardOptimization(originalBuffer, encoded, 'jpeg', 'visually-lossless');
-    expect(res.ok).toBe(true);
-    if (res.ok) {
-      expect(res.value.generationalLossWarning).toBe(true);
-    }
-  });
-
-  it('does NOT flag generational loss warning when compressing lossless PNG', () => {
-    const originalBuffer = new Uint8Array(500).buffer;
-    const encoded: EncodeResult = {
-      outputBuffer: new Uint8Array(300).buffer,
-      format: 'webp',
-      qualityScore: 93.0,
-      durationMs: 60,
-    };
-
-    const res = guardOptimization(originalBuffer, encoded, 'png', 'visually-lossless');
-    expect(res.ok).toBe(true);
-    if (res.ok) {
-      expect(res.value.generationalLossWarning).toBe(false);
     }
   });
 });
