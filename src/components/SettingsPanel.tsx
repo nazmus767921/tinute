@@ -87,6 +87,7 @@ export const SettingsPanel: React.FC = () => {
             <Slider
               label="Quality"
               min={1}
+              max={99}
               value={settings.qualityTarget ?? 80}
               onValueChange={setQualityTarget}
             />

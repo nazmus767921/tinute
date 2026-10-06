@@ -91,7 +91,7 @@ export const avifCodec: ImageCodec<AvifEncodeOptions> = {
     const speed = options.speed ?? 6;
 
     return await encode(imgDataLike, {
-      quality: isLossless ? 100 : quality,
+      quality: isLossless ? 100 : Math.min(99, quality),
       lossless: isLossless,
       speed,
     });

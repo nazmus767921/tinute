@@ -192,7 +192,8 @@
 
 /* 1. Calm Idle: Float breathing */
 @keyframes bytebot-idle-float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px);
   }
   50% {
@@ -202,7 +203,8 @@
 
 /* 2. Calm Idle: Antenna organic sway */
 @keyframes bytebot-antenna-sway {
-  0%, 100% {
+  0%,
+  100% {
     transform: rotate(0deg);
   }
   28% {
@@ -215,7 +217,8 @@
 
 /* 3. Calm Idle: Natural blinking with realistic 120ms dip & double-blink */
 @keyframes bytebot-natural-blink {
-  0%, 68% {
+  0%,
+  68% {
     transform: scaleY(1);
   }
   70% {
@@ -227,52 +230,66 @@
   75% {
     transform: scaleY(0.08);
   }
-  77%, 100% {
+  77%,
+  100% {
     transform: scaleY(1);
   }
 }
 
 /* 4. Calm Idle: Smooth gaze wander */
 @keyframes bytebot-gaze-wander {
-  0%, 30% {
+  0%,
+  30% {
     transform: translate(0px, 0px);
   }
-  36%, 48% {
+  36%,
+  48% {
     transform: translate(2px, -0.8px);
   }
-  54%, 70% {
+  54%,
+  70% {
     transform: translate(0px, 0px);
   }
-  76%, 86% {
+  76%,
+  86% {
     transform: translate(-1.8px, 0px);
   }
-  92%, 100% {
+  92%,
+  100% {
     transform: translate(0px, 0px);
   }
 }
 
 /* 5. Calm Idle: Subtle eyebrows accompaniment to gaze */
 @keyframes bytebot-eyebrows-calm {
-  0%, 30% {
+  0%,
+  30% {
     transform: translateY(0px) rotate(0deg);
   }
-  36%, 48% {
+  36%,
+  48% {
     transform: translateY(-1px) rotate(1.5deg);
   }
-  54%, 70% {
+  54%,
+  70% {
     transform: translateY(0px) rotate(0deg);
   }
-  76%, 86% {
+  76%,
+  86% {
     transform: translateY(-0.8px) rotate(-1deg);
   }
-  92%, 100% {
+  92%,
+  100% {
     transform: translateY(0px) rotate(0deg);
   }
 }
 
 /* 6. Ear bolts reactive micro-twitch */
 @keyframes bytebot-ear-wiggle-left {
-  0%, 88%, 96%, 100% {
+  0%,
+  88%,
+  96%,
+  100% {
     transform: rotate(0deg);
   }
   90% {
@@ -284,7 +301,10 @@
 }
 
 @keyframes bytebot-ear-wiggle-right {
-  0%, 88%, 96%, 100% {
+  0%,
+  88%,
+  96%,
+  100% {
     transform: rotate(0deg);
   }
   90% {
@@ -297,7 +317,8 @@
 
 /* 7. Pet / Click: Playful wink bounce & perk */
 @keyframes bytebot-wink-perk {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px) rotate(0deg);
   }
   25% {
@@ -312,7 +333,8 @@
 }
 
 @keyframes bytebot-wink-twinkle {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1) rotate(0deg);
   }
   50% {
@@ -322,7 +344,8 @@
 
 /* 8. Dragging: Eager hungry chomp */
 @keyframes bytebot-hungry-wobble {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0) scale(1);
   }
   50% {
@@ -331,7 +354,8 @@
 }
 
 @keyframes bytebot-hungry-chomp {
-  0%, 100% {
+  0%,
+  100% {
     transform: scaleY(1);
   }
   50% {
@@ -341,7 +365,8 @@
 
 /* 9. Compressing: High-energy crunch rumble & munch */
 @keyframes bytebot-crunch-vibe {
-  0%, 100% {
+  0%,
+  100% {
     transform: translate(0, 0);
   }
   25% {
@@ -356,7 +381,8 @@
 }
 
 @keyframes bytebot-crunch-mouth {
-  0%, 100% {
+  0%,
+  100% {
     transform: scaleY(1);
   }
   50% {
@@ -366,7 +392,8 @@
 
 /* 10. Celebrating: Joyful double-bounce */
 @keyframes bytebot-celebrate-bounce {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px) rotate(0deg);
   }
   25% {
@@ -378,7 +405,9 @@
 }
 
 @keyframes bytebot-glasses-glint {
-  0%, 30%, 100% {
+  0%,
+  30%,
+  100% {
     opacity: 0.4;
   }
   15% {
@@ -388,7 +417,8 @@
 
 /* 11. Error: Dizzy error tilt */
 @keyframes bytebot-error-tilt {
-  0%, 100% {
+  0%,
+  100% {
     transform: rotate(0deg);
   }
   25% {
@@ -433,7 +463,9 @@
 .bytebot-anim-mouth-o,
 .bytebot-anim-mouth-open,
 .bytebot-anim-mouth-smirk {
-  transition: opacity 200ms ease-out, transform 200ms ease-out;
+  transition:
+    opacity 200ms ease-out,
+    transform 200ms ease-out;
 }
 
 .bytebot-anim-eyes-round {

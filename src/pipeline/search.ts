@@ -118,7 +118,8 @@ export async function searchAndEncode(
     }
 
     // Quality is an encoder preset, not a measured whole-image perceptual guarantee.
-    const quality = Math.max(1, Math.min(100, settings.qualityTarget ?? 80));
+    // Cap at 99 in visually lossless mode so codecs don't trigger internal lossless switches.
+    const quality = Math.max(1, Math.min(99, settings.qualityTarget ?? 80));
     const outputBuffer = await codec.encode(inputImage, { ...plan.encodeOptions, quality });
     return ok({
       outputBuffer,

@@ -9,7 +9,9 @@ describe('advanced settings', () => {
     render(<SettingsPanel />);
     fireEvent.click(screen.getByRole('combobox', { name: 'Output format' }));
     fireEvent.click(screen.getByRole('option', { name: 'AVIF' }));
-    fireEvent.keyDown(screen.getByRole('slider', { name: /quality/i }), { key: 'PageUp' });
+    const qualitySlider = screen.getByRole('slider', { name: /quality/i });
+    expect(qualitySlider).toHaveAttribute('aria-valuemax', '99');
+    fireEvent.keyDown(qualitySlider, { key: 'PageUp' });
     fireEvent.click(screen.getByRole('checkbox', { name: /remove location/i }));
     fireEvent.click(screen.getByRole('combobox', { name: /image dimensions/i }));
     fireEvent.click(screen.getByRole('option', { name: 'Up to 1920 px' }));

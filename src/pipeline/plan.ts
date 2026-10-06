@@ -82,7 +82,8 @@ export function planOptimization(
           : targetFormat === 'jxl'
             ? 75
             : 80;
-    const baseQuality = qualityTarget ?? defaultQuality;
+    // In visually lossless mode, cap quality at 99 to prevent codecs from switching to lossless.
+    const baseQuality = Math.min(99, Math.max(1, qualityTarget ?? defaultQuality));
 
     switch (targetFormat) {
       case 'jpeg':

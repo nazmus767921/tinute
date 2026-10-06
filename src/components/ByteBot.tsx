@@ -383,18 +383,8 @@ export const ByteBot: React.FC<ByteBotProps> = ({
           {mood === 'crunching' && (
             <g className={animated ? 'bytebot-crunch-face' : ''}>
               {/* Focused laser comic squint eyes */}
-              <path
-                d="M33 46 L43 42"
-                stroke="#eab308"
-                strokeWidth="4"
-                strokeLinecap="round"
-              />
-              <path
-                d="M67 46 L57 42"
-                stroke="#eab308"
-                strokeWidth="4"
-                strokeLinecap="round"
-              />
+              <path d="M33 46 L43 42" stroke="#eab308" strokeWidth="4" strokeLinecap="round" />
+              <path d="M67 46 L57 42" stroke="#eab308" strokeWidth="4" strokeLinecap="round" />
               {/* Chomping Zigzag Mouth */}
               <path
                 d="M38 58 L43 53 L48 58 L53 53 L58 58 L62 53"

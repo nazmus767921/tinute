@@ -62,7 +62,7 @@ export const jxlCodec: ImageCodec<JxlEncodeOptions> = {
     const effort = options.effort ?? 7;
 
     return await encode(imgDataLike, {
-      quality: isLossless ? 100 : quality,
+      quality: isLossless ? 100 : Math.min(99, quality),
       lossless: isLossless,
       effort,
       decodingSpeedTier: options.decodingSpeed ?? 0,

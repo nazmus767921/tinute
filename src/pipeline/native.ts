@@ -33,7 +33,7 @@ export async function encodeNative(
       context.fillRect(0, 0, canvas.width, canvas.height);
     }
     context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    const quality = Math.max(1, Math.min(100, settings.qualityTarget ?? 80));
+    const quality = Math.max(1, Math.min(99, settings.qualityTarget ?? 80));
     const blob = await canvas.convertToBlob({ type: `image/${target}`, quality: quality / 100 });
     if (blob.type !== `image/${target}`) return null;
     return {

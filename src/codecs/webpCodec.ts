@@ -64,7 +64,7 @@ export const webpCodec: ImageCodec<WebpEncodeOptions> = {
           context.putImageData(new ImageData(image.data, image.width, image.height), 0, 0);
           const blob = await canvas.convertToBlob({
             type: 'image/webp',
-            quality: Math.max(0, Math.min(100, options.quality ?? 75)) / 100,
+            quality: Math.max(0, Math.min(99, options.quality ?? 75)) / 100,
           });
           // Browsers can silently return PNG when WebP encoding is unavailable.
           if (blob.type === 'image/webp') return await blob.arrayBuffer();
@@ -85,7 +85,7 @@ export const webpCodec: ImageCodec<WebpEncodeOptions> = {
     const quality = options.quality ?? 75;
 
     return await encode(imgDataLike, {
-      quality: isLossless ? 100 : quality,
+      quality: isLossless ? 100 : Math.min(99, quality),
       lossless: isLossless ? 1 : 0,
       method: options.method ?? 4,
       exact: isLossless ? 1 : 0,

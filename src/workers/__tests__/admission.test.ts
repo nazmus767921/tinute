@@ -4,9 +4,16 @@ it('admits compression ahead of queued background thumbnails', async () => {
   const gate = new ResourceAdmission();
   const release = await gate.acquire('active', PROCESSING_BUDGET_BYTES);
   const order: string[] = [];
-  const thumbnail = gate.acquire('thumbnail', PROCESSING_BUDGET_BYTES, 0).then((done) => { order.push('thumbnail'); done!(); });
-  const processing = gate.acquire('processing', PROCESSING_BUDGET_BYTES, 10).then((done) => { order.push('processing'); done!(); });
-  release!(); await Promise.all([thumbnail, processing]);
+  const thumbnail = gate.acquire('thumbnail', PROCESSING_BUDGET_BYTES, 0).then((done) => {
+    order.push('thumbnail');
+    done!();
+  });
+  const processing = gate.acquire('processing', PROCESSING_BUDGET_BYTES, 10).then((done) => {
+    order.push('processing');
+    done!();
+  });
+  release!();
+  await Promise.all([thumbnail, processing]);
   expect(order).toEqual(['processing', 'thumbnail']);
 });
 it('holds overlapping large submissions until the reservation is released', async () => {
