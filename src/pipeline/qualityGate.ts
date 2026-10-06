@@ -232,6 +232,27 @@ export function computePerceptualScore(reference: RawImage, distorted: RawImage)
     return 100.0;
   }
 
+  if (reference.width * reference.height > 262_144) {
+    const width = Math.min(128, reference.width),
+      height = Math.min(128, reference.height);
+    const sample = (image: RawImage): RawImage => {
+      const data = new Uint8ClampedArray(width * 3 * height * 3 * 4);
+      for (let py = 0; py < 3; py++)
+        for (let px = 0; px < 3; px++) {
+          const sx = Math.round(((image.width - width) * px) / 2);
+          const sy = Math.round(((image.height - height) * py) / 2);
+          for (let y = 0; y < height; y++) {
+            const start = ((sy + y) * image.width + sx) * 4;
+            data.set(
+              image.data.subarray(start, start + width * 4),
+              ((py * height + y) * width * 3 + px * width) * 4,
+            );
+          }
+        }
+      return { width: width * 3, height: height * 3, data };
+    };
+    return computePerceptualScore(sample(reference), sample(distorted));
+  }
   const ch1 = extractChannels(reference);
   const ch2 = extractChannels(distorted);
 

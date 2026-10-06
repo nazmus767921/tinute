@@ -39,15 +39,30 @@ async function ensurePngDecoder(): Promise<PngDecodeFn> {
 }
 
 async function ensureOxipng(): Promise<OxipngFn> {
-  const { init, default: optimise } = await import('@jsquash/oxipng/optimise.js');
+  // The wrapper auto-selects Rayon and spawns hardwareConcurrency subworkers in
+  // isolated browsers. Match our single-thread binary explicitly and keep all
+  // concurrency under Tinute's admission scheduler.
+  const bindings = await import('@jsquash/oxipng/codec/pkg/squoosh_oxipng.js');
   if (!oxipngInitPromise) {
     oxipngInitPromise = (async () => {
       const wasm = await loadWasmModule('squoosh_oxipng_bg.wasm');
-      await init(wasm);
+      await bindings.default(wasm);
     })();
+    void oxipngInitPromise.catch(() => {
+      oxipngInitPromise = null;
+    });
   }
   await oxipngInitPromise;
-  return optimise;
+  return async (data, options = {}) => {
+    const level = options.level ?? 1;
+    const interlace = options.interlace ?? false;
+    const alpha = options.optimiseAlpha ?? false;
+    const output =
+      data instanceof ArrayBuffer
+        ? bindings.optimise(new Uint8Array(data), level, interlace, alpha)
+        : bindings.optimise_raw(data.data, data.width, data.height, level, interlace, alpha);
+    return output.buffer;
+  };
 }
 
 export const pngCodec: ImageCodec<PngEncodeOptions> & {

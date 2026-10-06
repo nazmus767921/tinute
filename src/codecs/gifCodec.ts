@@ -43,7 +43,7 @@ function quantizeToPalette(
     const r = data[i]!;
     const g = data[i + 1]!;
     const b = data[i + 2]!;
-    const rgb = (r << 16) | (g << 8) | b;
+    const rgb = ((r & 248) << 16) | ((g & 248) << 8) | (b & 248);
     colorMap.set(rgb, (colorMap.get(rgb) ?? 0) + 1);
   }
 
@@ -106,7 +106,7 @@ function quantizeToPalette(
     const r = data[idx]!;
     const g = data[idx + 1]!;
     const b = data[idx + 2]!;
-    const rgb = (r << 16) | (g << 8) | b;
+    const rgb = ((r & 248) << 16) | ((g & 248) << 8) | (b & 248);
 
     const exactMatch = colorToIndex.get(rgb);
     if (exactMatch !== undefined) {

@@ -142,7 +142,9 @@ export function Select<T extends string>({
               aria-selected={value === option.value}
               className="custom-select-option"
               data-active={active === index}
-              onPointerMove={() => setActive(index)}
+              onPointerMove={(event) => {
+                if (event.movementX || event.movementY) setActive(index);
+              }}
               onPointerDown={(e) => e.preventDefault()}
               onClick={() => commit(index)}
             >

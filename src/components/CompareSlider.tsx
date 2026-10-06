@@ -1,14 +1,21 @@
+import { useShallow } from 'zustand/react/shallow';
 import React, { useState, useRef, useEffect } from 'react';
 import { usePipelineStore } from '../store/pipelineStore';
 import { Slider } from './ui/controls';
 import { CompareControls } from './CompareControls';
-import { readJobOutput } from '../utils/output';
+import { readJobBlob } from '../utils/output';
 import { createPreviewUrl } from '../utils/preview';
 import { formatBytes } from '../utils/format';
 import { X, AlertCircle } from '@/icons';
 
 export const CompareSlider: React.FC = () => {
-  const { jobs, selectedCompareJobId, setSelectedCompareJobId } = usePipelineStore();
+  const { jobs, selectedCompareJobId, setSelectedCompareJobId } = usePipelineStore(
+    useShallow((state) => ({
+      jobs: state.jobs,
+      selectedCompareJobId: state.selectedCompareJobId,
+      setSelectedCompareJobId: state.setSelectedCompareJobId,
+    })),
+  );
   const job = jobs.find((j) => j.id === selectedCompareJobId && j.status === 'done' && j.result);
   const dialog = useRef<HTMLDialogElement>(null);
   const [split, setSplit] = useState(50);
@@ -32,6 +39,7 @@ export const CompareSlider: React.FC = () => {
   useEffect(() => {
     if (!job?.result) return;
     let disposed = false;
+    const controller = new AbortController();
     const revokes: Array<() => void> = [];
     setUrls(null);
     setFailed(false);
@@ -40,14 +48,23 @@ export const CompareSlider: React.FC = () => {
     setPan({ x: 0, y: 0 });
     const load = async () => {
       try {
-        const buffer = await job.file.arrayBuffer();
-        const original = await createPreviewUrl(buffer, job.result!.originalFormat);
+        const original = await createPreviewUrl(
+          job.file,
+          job.result!.originalFormat,
+          1600,
+          controller.signal,
+        );
         if (disposed) {
           original.revoke();
           return;
         }
         revokes.push(original.revoke);
-        const smaller = await createPreviewUrl(await readJobOutput(job), job.result!.outputFormat);
+        const smaller = await createPreviewUrl(
+          await readJobBlob(job),
+          job.result!.outputFormat,
+          1600,
+          controller.signal,
+        );
         if (disposed) {
           smaller.revoke();
           return;
@@ -61,6 +78,7 @@ export const CompareSlider: React.FC = () => {
     void load();
     return () => {
       disposed = true;
+      controller.abort();
       revokes.forEach((revoke) => revoke());
     };
   }, [job]);
@@ -179,7 +197,9 @@ export const CompareSlider: React.FC = () => {
                 {result.originalFormat.toUpperCase()} → {result.outputFormat.toUpperCase()} ·{' '}
                 {result.isLosslessBitExact
                   ? 'Every detail preserved'
-                  : `Quality score: ${result.qualityScore.toFixed(1)} / 100`}
+                  : result.qualityVerified === false
+                    ? 'High-quality compression · compare before downloading'
+                    : `Quality score: ${result.qualityScore.toFixed(1)} / 100`}
               </p>
             </details>
           </div>

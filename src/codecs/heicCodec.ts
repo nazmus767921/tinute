@@ -61,7 +61,7 @@ export const heicCodec: ImageCodec<BaseEncodeOptions> = {
         });
       });
     } finally {
-      image.free();
+      for (const decoded of data) decoded.free();
     }
 
     return {

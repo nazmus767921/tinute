@@ -34,7 +34,7 @@ export async function loadWasmModule(fileName: string): Promise<WebAssembly.Modu
 
     if (typeof WebAssembly.compileStreaming === 'function') {
       try {
-        return await WebAssembly.compileStreaming(response);
+        return await WebAssembly.compileStreaming(response.clone());
       } catch {
         // Fallback if Content-Type was not application/wasm
         const arrayBuf = await response.arrayBuffer();
@@ -47,5 +47,6 @@ export async function loadWasmModule(fileName: string): Promise<WebAssembly.Modu
   })();
 
   moduleCache.set(fileName, promise);
+  void promise.catch(() => moduleCache.delete(fileName));
   return promise;
 }

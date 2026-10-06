@@ -20,6 +20,17 @@ function Example() {
   );
 }
 describe('shared custom controls', () => {
+  it('keeps keyboard selection when scrolling emits a stationary pointer event', () => {
+    render(<Example />);
+    const select = screen.getByRole('combobox');
+    fireEvent.keyDown(select, { key: 'End' });
+    fireEvent.pointerMove(screen.getByRole('option', { name: 'Apple' }), {
+      movementX: 0,
+      movementY: 0,
+    });
+    fireEvent.keyDown(select, { key: 'Enter' });
+    expect(select).toHaveTextContent('Banana');
+  });
   it('selects with arrows, commits with Enter and dismisses with Escape', () => {
     render(<Example />);
     const select = screen.getByRole('combobox');

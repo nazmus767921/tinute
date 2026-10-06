@@ -1,3 +1,4 @@
+import { extractExif } from './metadata/exif';
 import {
   ok,
   type Result,
@@ -30,6 +31,7 @@ export function finalizeOptimization(
       settings.stripMetadata &&
       (!guardResult.neverBiggerTriggered || !!guardResult.metadataSanitized),
     exifRemoved:
+      extractExif(guardResult.outputBuffer).rawExifBytes === undefined &&
       settings.stripMetadata &&
       (!guardResult.neverBiggerTriggered || !!guardResult.metadataSanitized),
     iccPreserved: guardResult.neverBiggerTriggered, // Original ICC is retained only in the container fallback.
@@ -48,6 +50,7 @@ export function finalizeOptimization(
     metadataSanitized: !!guardResult.metadataSanitized,
     generationalLossWarning: guardResult.generationalLossWarning,
     qualityScore: guardResult.qualityScore,
+    qualityVerified: guardResult.qualityVerified,
     isLosslessBitExact: guardResult.isLosslessBitExact,
     classification: plan.classification,
     mode: plan.mode,

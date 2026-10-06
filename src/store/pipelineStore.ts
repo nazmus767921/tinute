@@ -1,3 +1,4 @@
+import { processingAdmission } from '../workers/admission';
 import { create } from 'zustand';
 import { WorkerPool } from '../workers/WorkerPool';
 import type {
@@ -54,7 +55,7 @@ interface PipelineState {
 export const MAX_BATCH_INPUT_BYTES = 100 * 1024 * 1024;
 
 export const RECOMMENDED_SETTINGS: UserPipelineSettings = {
-  targetFormat: 'auto',
+  targetFormat: 'preserve',
   mode: 'visually-lossless',
   stripMetadata: true,
   qualityTarget: 80,
@@ -181,6 +182,7 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
   },
 
   cancelJob: (id: string) => {
+    processingAdmission.cancel(id);
     get().workerPool?.cancel(id);
     set((state) => {
       const jobs = state.jobs.map((j) =>
@@ -200,6 +202,7 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
     const pool = get().workerPool;
     get().jobs.forEach((j) => {
       if (j.status === 'queued' || j.status === 'processing') {
+        processingAdmission.cancel(j.id);
         pool?.cancel(j.id);
       }
     });

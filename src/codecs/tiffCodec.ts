@@ -13,7 +13,20 @@ export const tiffCodec: ImageCodec<TiffEncodeOptions> = {
       throw new Error('Invalid or corrupted TIFF image: No IFD found.');
     }
 
+    if (ifds.length !== 1)
+      throw new Error('Multi-page TIFF processing is unsupported. Choose a single-page image.');
     const firstIfd = ifds[0];
+    const bits = firstIfd.t258;
+    const depths =
+      typeof bits === 'number'
+        ? [bits]
+        : Array.isArray(bits)
+          ? bits
+          : bits instanceof Uint8Array
+            ? Array.from(bits)
+            : [];
+    if (depths.some((value) => Number(value) > 8))
+      throw new Error('High-bit-depth TIFF processing is unsupported. Choose an 8-bit image.');
     UTIF.decodeImage(buffer, firstIfd);
 
     const width = firstIfd.width;

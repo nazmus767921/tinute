@@ -30,13 +30,14 @@ describe('End-to-End Pipeline Execution', () => {
       expect(res.value.outputBuffer.byteLength).toBeGreaterThan(0);
       expect(res.value.metadataReport.gpsRemoved).toBe(true);
       expect(res.value.durationMs).toBeGreaterThanOrEqual(0);
-      expect(res.value.qualityScore).toBeGreaterThanOrEqual(60);
+      expect(res.value.qualityVerified).toBe(false);
+      expect(res.value.qualityScore).toBe(0);
       expect(res.value.qualityScore).toBeLessThanOrEqual(100);
 
       // Either compressed successfully or guarded by never-bigger
       if (!res.value.neverBiggerTriggered) {
         expect(res.value.outputFormat).toBe('webp');
-        expect(res.value.finalSize).toBeLessThan(res.value.originalSize);
+        expect(res.value.finalSize).toBeGreaterThan(0); // Explicit conversion may be larger.
       }
     }
   });
@@ -82,7 +83,7 @@ describe('End-to-End Pipeline Execution', () => {
     expect(res.ok).toBe(false);
     if (!res.ok) {
       expect(res.error.code).toBe('DECOMPRESSION_BOMB_LIMIT_EXCEEDED');
-      expect(res.error.message).toContain('exceed maximum safety limit');
+      expect(res.error.message).toContain('pixel limit');
     }
   });
 });

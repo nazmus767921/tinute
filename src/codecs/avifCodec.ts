@@ -1,6 +1,7 @@
 import { loadWasmModule } from './wasmLoader';
 import type { ImageCodec, AvifEncodeOptions, RawImage } from './types';
 import type { EncodeOptions as JsquashAvifOptions } from '@jsquash/avif/meta.js';
+import type { AVIFModule } from '@jsquash/avif/codec/enc/avif_enc.js';
 
 type AvifEncodeFn = (
   data: ImageData,
@@ -8,19 +9,41 @@ type AvifEncodeFn = (
 ) => Promise<ArrayBuffer>;
 type AvifDecodeFn = (buffer: ArrayBuffer) => Promise<ImageData | null>;
 
-let avifEncInitPromise: Promise<void> | null = null;
+let avifEncInitPromise: Promise<AVIFModule> | null = null;
 let avifDecInitPromise: Promise<void> | null = null;
 
 async function ensureAvifEncoder(): Promise<AvifEncodeFn> {
-  const { init, default: encode } = await import('@jsquash/avif/encode.js');
+  const { default: factory } = await import('@jsquash/avif/codec/enc/avif_enc.js');
+  const { initEmscriptenModule } = await import('@jsquash/avif/utils.js');
+  const { defaultOptions } = await import('@jsquash/avif/meta.js');
   if (!avifEncInitPromise) {
     avifEncInitPromise = (async () => {
       const wasm = await loadWasmModule('avif_enc.wasm');
-      await init(wasm);
+      const encoder = await initEmscriptenModule(factory, wasm);
+      if (!encoder) throw new Error('AVIF initialization failed.');
+      return encoder;
     })();
+    void avifEncInitPromise.catch(() => {
+      avifEncInitPromise = null;
+    });
   }
-  await avifEncInitPromise;
-  return encode;
+  const module = await avifEncInitPromise;
+  return async (data, options = {}) => {
+    const resolved = { ...defaultOptions, ...options };
+    if (resolved.lossless) {
+      resolved.quality = 100;
+      resolved.qualityAlpha = -1;
+      resolved.subsample = 3;
+    }
+    const output = module.encode(
+      new Uint8Array(data.data.buffer, data.data.byteOffset, data.data.byteLength),
+      data.width,
+      data.height,
+      resolved,
+    );
+    if (!output) throw new Error('AVIF encoding failed.');
+    return output.buffer;
+  };
 }
 
 async function ensureAvifDecoder(): Promise<AvifDecodeFn> {

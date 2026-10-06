@@ -56,16 +56,24 @@ export const svgCodec: ImageCodec<SvgRenderOptions> = {
       imageRendering: 0, // optimizeQuality
     });
 
-    const rendered = resvg.render();
-    const width = rendered.width;
-    const height = rendered.height;
-    const pixels = rendered.pixels;
-
-    return {
-      data: new Uint8ClampedArray(pixels.buffer, pixels.byteOffset, pixels.byteLength),
-      width,
-      height,
-    };
+    if (resvg.width * resvg.height > 16_000_000) {
+      resvg.free();
+      throw new Error('SVG rendering exceeds the safe pixel limit. Choose a smaller image.');
+    }
+    try {
+      const rendered = resvg.render();
+      try {
+        return {
+          data: new Uint8ClampedArray(rendered.pixels),
+          width: rendered.width,
+          height: rendered.height,
+        };
+      } finally {
+        rendered.free();
+      }
+    } finally {
+      resvg.free();
+    }
   },
 
   async encode(): Promise<ArrayBuffer> {

@@ -1,11 +1,13 @@
 import { Zip, ZipPassThrough } from 'fflate';
 import type { ImageJob } from '../store/pipelineStore';
-import { getFileExtension } from './format';
-import { readJobOutput } from './output';
+import { getOutputExtension } from './format';
+import { readJobBlob } from './output';
+import { getSpillDirectory } from '../storage/opfs';
 
 export interface ZipExportOptions {
   suffix?: string; // default: '.optimized'
   onProgress?: (current: number, total: number) => void;
+  signal?: AbortSignal;
 }
 
 /**
@@ -22,7 +24,7 @@ export function generateUniqueArchiveNames(
   for (const job of jobs) {
     if (!job.result) continue;
 
-    const ext = getFileExtension(job.result.outputFormat);
+    const ext = getOutputExtension(job.name, job.result.outputFormat);
     const baseName = job.name.replace(/\.[^/.]+$/, '');
     let candidateName = `${baseName}${suffix}.${ext}`;
     let counter = 1;
@@ -54,52 +56,85 @@ export async function createStreamingZip(
 
   const { suffix = '.optimized', onProgress } = options;
   const fileNameMap = generateUniqueArchiveNames(completedJobs, suffix);
-  const chunks: Uint8Array[] = [];
-
-  return new Promise<Blob>((resolve, reject) => {
+  const directory = await getSpillDirectory();
+  const temporaryName = `archive-${crypto.randomUUID()}.zip`;
+  let writable: FileSystemWritableFileStream | undefined;
+  let handle: FileSystemFileHandle | undefined;
+  if (directory) {
+    handle = await directory.getFileHandle(temporaryName, { create: true });
     try {
-      const zip = new Zip((err, chunk, isLast) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        if (chunk) {
-          chunks.push(chunk);
-        }
-        if (isLast) {
-          const blob = new Blob(chunks, { type: 'application/zip' });
-          resolve(blob);
-        }
-      });
-
-      // Stream jobs sequentially to avoid memory spikes
-      (async () => {
-        let processed = 0;
-        const total = completedJobs.length;
-
-        for (const job of completedJobs) {
-          const archiveName = fileNameMap.get(job.id);
-          if (!archiveName || !job.result) continue;
-
-          const buffer = await readJobOutput(job);
-
-          const fileStream = new ZipPassThrough(archiveName);
-          zip.add(fileStream);
-
-          // Push binary data as Uint8Array
-          const u8 = new Uint8Array(buffer);
-          fileStream.push(u8, true);
-
-          processed++;
-          onProgress?.(processed, total);
-        }
-
-        zip.end();
-      })().catch(reject);
-    } catch (err) {
-      reject(err);
+      writable = await handle.createWritable();
+    } catch {
+      await directory.removeEntry(temporaryName);
+      handle = undefined;
+    }
+  }
+  const chunks: Uint8Array[] = [];
+  let fallbackBytes = 0;
+  let writes = Promise.resolve();
+  let zipError: Error | undefined;
+  const zip = new Zip((error, chunk) => {
+    if (error) {
+      zipError = error;
+      return;
+    }
+    if (!chunk) return;
+    if (writable) {
+      writes = writes.then(() => writable!.write(chunk));
+      // A rejection is observed after each small input chunk, before admitting more input.
+      void writes.catch(() => {});
+    } else {
+      fallbackBytes += chunk.byteLength;
+      if (fallbackBytes > 64 * 1024 * 1024) {
+        zipError = new Error(
+          'Archive exceeds the browser memory limit. Download images individually.',
+        );
+        return;
+      }
+      chunks.push(chunk);
     }
   });
+  const check = () => {
+    if (options.signal?.aborted) throw new Error('Archive cancelled.');
+    if (zipError) throw zipError;
+  };
+  try {
+    let processed = 0;
+    for (const job of completedJobs) {
+      check();
+      const archiveName = fileNameMap.get(job.id);
+      if (!archiveName) continue;
+      const blob = await readJobBlob(job);
+      const entry = new ZipPassThrough(archiveName);
+      zip.add(entry);
+      for (let offset = 0; offset < blob.size; offset += 1024 * 1024) {
+        check();
+        const end = Math.min(blob.size, offset + 1024 * 1024);
+        entry.push(new Uint8Array(await blob.slice(offset, end).arrayBuffer()), end === blob.size);
+        await writes;
+        check();
+      }
+      onProgress?.(++processed, completedJobs.length);
+    }
+    zip.end();
+    await writes;
+    check();
+    if (writable && handle && directory) {
+      await writable.close();
+      const file = await handle.getFile();
+      // Keep the backing file alive through the download's object-URL lifetime.
+      setTimeout(() => {
+        void directory.removeEntry(temporaryName).catch(() => {});
+      }, 120_000);
+      return file.slice(0, file.size, 'application/zip');
+    }
+    return new Blob(chunks, { type: 'application/zip' });
+  } catch (error) {
+    zip.terminate();
+    await writable?.abort().catch(() => {});
+    if (directory && handle) await directory.removeEntry(temporaryName).catch(() => {});
+    throw error;
+  }
 }
 
 /**

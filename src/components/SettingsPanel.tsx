@@ -1,3 +1,4 @@
+import { useShallow } from 'zustand/react/shallow';
 import React from 'react';
 import { usePipelineStore } from '../store/pipelineStore';
 import type { TargetFormat } from '../pipeline/types';
@@ -13,7 +14,17 @@ export const SettingsPanel: React.FC = () => {
     setStripMetadata,
     setMaxDimension,
     resetSettings,
-  } = usePipelineStore();
+  } = usePipelineStore(
+    useShallow((state) => ({
+      settings: state.settings,
+      setTargetFormat: state.setTargetFormat,
+      setMode: state.setMode,
+      setQualityTarget: state.setQualityTarget,
+      setStripMetadata: state.setStripMetadata,
+      setMaxDimension: state.setMaxDimension,
+      resetSettings: state.resetSettings,
+    })),
+  );
   return (
     <div className="settings-panel">
       <p className="text-sm text-muted text-pretty">
@@ -27,14 +38,14 @@ export const SettingsPanel: React.FC = () => {
             value={settings.targetFormat}
             onValueChange={setTargetFormat}
             options={[
-              { value: 'auto' as TargetFormat, label: 'Automatic (recommended)' },
+              { value: 'preserve' as TargetFormat, label: 'Keep original format' },
               ...['jpeg', 'png', 'webp', 'avif', 'jxl', 'gif', 'tiff', 'bmp'].map((format) => ({
                 value: format as TargetFormat,
                 label: format === 'jxl' ? 'JPEG XL' : format.toUpperCase(),
               })),
             ]}
           />
-          <p className="field-help">Automatic chooses a suitable format for each image.</p>
+          <p className="field-help">Keeps each image’s format unless you choose another.</p>
         </div>
         <div>
           <Select
@@ -58,8 +69,8 @@ export const SettingsPanel: React.FC = () => {
           options={[
             {
               value: 'visually-lossless',
-              label: 'Smaller file, same look',
-              description: 'Visually lossless · recommended',
+              label: 'High quality',
+              description: 'Fast compression · recommended',
             },
             {
               value: 'lossless',

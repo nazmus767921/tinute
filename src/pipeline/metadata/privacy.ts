@@ -1,5 +1,44 @@
 import type { ImageFormat } from '../types';
 import { gifCodec } from '../../codecs/gifCodec';
+import { extractExif } from './exif';
+
+/** Retain only display orientation, with no camera, location, or identity fields. */
+function orientationSegment(orientation: number): Uint8Array {
+  const segment = new Uint8Array(36);
+  segment.set([
+    255,
+    225,
+    0,
+    34,
+    69,
+    120,
+    105,
+    102,
+    0,
+    0,
+    73,
+    73,
+    42,
+    0,
+    8,
+    0,
+    0,
+    0,
+    1,
+    0,
+    18,
+    1,
+    3,
+    0,
+    1,
+    0,
+    0,
+    0,
+    orientation,
+    0,
+  ]);
+  return segment;
+}
 
 const nameAt = (bytes: Uint8Array, offset: number) =>
   String.fromCharCode(...bytes.subarray(offset, offset + 4));
@@ -24,6 +63,8 @@ export function sanitizeOriginalMetadata(
     if (format === 'jpeg') {
       if (bytes[0] !== 255 || bytes[1] !== 216) return null;
       const parts = [bytes.subarray(0, 2)];
+      const orientation = extractExif(buffer).orientation;
+      if (orientation > 1) parts.push(orientationSegment(orientation));
       let offset = 2;
       while (offset < bytes.length) {
         const start = offset;

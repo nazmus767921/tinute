@@ -5,6 +5,8 @@ import {
   retrieveFromDisk,
   removeSpill,
   clearAllSpill,
+  retrieveBlob,
+  MAX_FALLBACK_BYTES,
 } from '../opfs';
 
 describe('OPFS Spill Storage with In-Memory Fallback', () => {
@@ -41,6 +43,15 @@ describe('OPFS Spill Storage with In-Memory Fallback', () => {
 
     const retrieved = await retrieveFromDisk(jobId);
     expect(retrieved).toBeNull();
+  });
+
+  it('rejects fallback overflow without discarding existing results', async () => {
+    await spillToDisk('retained', new Uint8Array([1]));
+    await expect(spillToDisk('huge', new ArrayBuffer(MAX_FALLBACK_BYTES))).rejects.toThrow(
+      /memory is full/,
+    );
+    expect((await retrieveBlob('retained'))?.size).toBe(1);
+    expect(await retrieveBlob('huge')).toBeNull();
   });
 
   it('clears all spilled buffers on clearAllSpill', async () => {

@@ -13,7 +13,7 @@ vi.mock('../../utils/zipExport', () => ({
 }));
 
 const defaults = {
-  targetFormat: 'auto' as const,
+  targetFormat: 'preserve' as const,
   mode: 'visually-lossless' as const,
   qualityTarget: 80,
   stripMetadata: true,
@@ -56,17 +56,19 @@ describe('submission lifecycle', () => {
     await vi.waitFor(() => expect(submit).toHaveBeenCalledTimes(1));
     usePipelineStore.getState().setTargetFormat('jpeg');
     const second = usePipelineStore.getState().addFiles([file('c.png')]);
+    // The second submission waits for global admission; it cannot read ahead.
+    expect(submit).toHaveBeenCalledTimes(1);
+    finish[0]!(failure);
     await vi.waitFor(() => expect(submit).toHaveBeenCalledTimes(2));
     finish[1]!(failure);
     await second;
     expect(usePipelineStore.getState().isProcessing).toBe(true);
-    finish[0]!(failure);
     await vi.waitFor(() => expect(submit).toHaveBeenCalledTimes(3));
     expect(
       submit.mock.calls.map(
         (call) => (call as unknown as [{ settings: typeof defaults }])[0].settings.targetFormat,
       ),
-    ).toEqual(['auto', 'jpeg', 'auto']);
+    ).toEqual(['preserve', 'jpeg', 'preserve']);
     finish[2]!(failure);
     await first;
     expect(usePipelineStore.getState().isProcessing).toBe(false);

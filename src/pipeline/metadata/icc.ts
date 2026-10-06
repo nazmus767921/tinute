@@ -286,28 +286,35 @@ export async function normalizeColorSpace(
 
           if (transform !== 0) {
             const pixelCount = image.width * image.height;
-            const rgbIn = new Uint8Array(pixelCount * 3);
             const src = image.data;
-
-            for (let i = 0, p = 0; i < src.length; i += 4, p += 3) {
-              rgbIn[p] = src[i]!;
-              rgbIn[p + 1] = src[i + 1]!;
-              rgbIn[p + 2] = src[i + 2]!;
-            }
-
-            const rgbOut = lcms.cmsDoTransform(transform, rgbIn, pixelCount);
             const dst = new Uint8ClampedArray(src.length);
-
-            for (let i = 0, p = 0; i < src.length; i += 4, p += 3) {
-              dst[i] = rgbOut[p]!;
-              dst[i + 1] = rgbOut[p + 1]!;
-              dst[i + 2] = rgbOut[p + 2]!;
-              dst[i + 3] = src[i + 3]!; // Exact alpha preserved
+            try {
+              const tilePixels = 65536;
+              for (let offset = 0; offset < pixelCount; offset += tilePixels) {
+                const count = Math.min(tilePixels, pixelCount - offset);
+                const rgbIn = new Uint8Array(count * 3);
+                for (let p = 0; p < count; p++) {
+                  const source = (offset + p) * 4,
+                    target = p * 3;
+                  rgbIn[target] = src[source]!;
+                  rgbIn[target + 1] = src[source + 1]!;
+                  rgbIn[target + 2] = src[source + 2]!;
+                }
+                const rgbOut = lcms.cmsDoTransform(transform, rgbIn, count);
+                for (let p = 0; p < count; p++) {
+                  const target = (offset + p) * 4,
+                    source = p * 3;
+                  dst[target] = rgbOut[source]!;
+                  dst[target + 1] = rgbOut[source + 1]!;
+                  dst[target + 2] = rgbOut[source + 2]!;
+                  dst[target + 3] = src[target + 3]!;
+                }
+              }
+            } finally {
+              lcms.cmsDeleteTransform(transform);
+              lcms.cmsCloseProfile(inProfile);
+              lcms.cmsCloseProfile(outProfile);
             }
-
-            lcms.cmsDeleteTransform(transform);
-            lcms.cmsCloseProfile(inProfile);
-            lcms.cmsCloseProfile(outProfile);
 
             return {
               width: image.width,

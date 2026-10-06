@@ -1,12 +1,12 @@
 import {
   ok,
+  err,
   type Result,
   type ClassificationResult,
   type UserPipelineSettings,
   type PipelinePlan,
   type PipelineError,
   type ImageFormat,
-  type EncodableFormat,
 } from './types';
 import type { CodecEncodeOptions } from '../codecs/types';
 
@@ -17,13 +17,18 @@ import type { CodecEncodeOptions } from '../codecs/types';
 export function planOptimization(
   classification: ClassificationResult,
   settings: UserPipelineSettings,
+  sourceFormat?: ImageFormat,
 ): Result<PipelinePlan, PipelineError> {
   const { mode, targetFormat: requestedTarget, qualityTarget } = settings;
   const { hasAlpha, classification: category } = classification;
 
-  let targetFormat: EncodableFormat;
+  let targetFormat: ImageFormat;
 
-  if (requestedTarget !== 'auto') {
+  if (requestedTarget === 'preserve') {
+    if (!sourceFormat)
+      return err({ code: 'PLANNING_ERROR', message: 'Could not identify the original format.' });
+    targetFormat = sourceFormat;
+  } else if (requestedTarget !== 'auto') {
     targetFormat = requestedTarget;
   } else {
     // Intelligent Auto selection based on content classification and alpha
@@ -42,16 +47,16 @@ export function planOptimization(
   if (mode === 'lossless') {
     switch (targetFormat) {
       case 'png':
-        encodeOptions = { level: 2, optimiseAlpha: true, interlace: false };
+        encodeOptions = { level: 2, optimiseAlpha: false, interlace: false };
         break;
       case 'webp':
         encodeOptions = { lossless: true, quality: 100, method: 4 };
         break;
       case 'avif':
-        encodeOptions = { lossless: true, quality: 100, speed: 6 };
+        encodeOptions = { lossless: true, quality: 100, speed: 8 };
         break;
       case 'jxl':
-        encodeOptions = { lossless: true, quality: 100, effort: 7 };
+        encodeOptions = { lossless: true, quality: 100, effort: 3 };
         break;
       case 'gif':
         encodeOptions = { paletteSize: 256 };
@@ -100,19 +105,19 @@ export function planOptimization(
         encodeOptions = {
           quality: baseQuality,
           lossless: false,
-          speed: 6,
+          speed: 8,
         };
         break;
       case 'jxl':
         encodeOptions = {
           quality: baseQuality,
           lossless: false,
-          effort: 7,
+          effort: 3,
         };
         break;
       case 'png':
         encodeOptions = {
-          level: 3,
+          level: 1,
           optimiseAlpha: true,
         };
         break;

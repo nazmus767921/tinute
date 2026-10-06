@@ -1,3 +1,4 @@
+import { useShallow } from 'zustand/react/shallow';
 import React from 'react';
 import { usePipelineStore } from '../store/pipelineStore';
 import { ResultRow } from './ResultRow';
@@ -15,7 +16,17 @@ export const ResultsTable: React.FC = () => {
     cancelJob,
     retryJob,
     clearCompleted,
-  } = usePipelineStore();
+  } = usePipelineStore(
+    useShallow((state) => ({
+      jobs: state.jobs,
+      isZipping: state.isZipping,
+      selectedCompareJobId: state.selectedCompareJobId,
+      setSelectedCompareJobId: state.setSelectedCompareJobId,
+      cancelJob: state.cancelJob,
+      retryJob: state.retryJob,
+      clearCompleted: state.clearCompleted,
+    })),
+  );
   if (!jobs.length) return null;
   const pending = jobs.some((j) => j.status === 'processing' || j.status === 'queued');
   const ready = jobs.filter((j) => j.status === 'done' && j.result).length;

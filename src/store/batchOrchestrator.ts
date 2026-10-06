@@ -1,3 +1,5 @@
+import { processingAdmission } from '../workers/admission';
+import { estimateJobMemory } from '../workers/inspect';
 import type { WorkerPool } from '../workers/WorkerPool';
 import type { ImageJob } from './pipelineStore';
 import type { UserPipelineSettings, FinalPipelineOutput, PipelineError } from '../pipeline/types';
@@ -61,15 +63,23 @@ export async function runBatchOrchestrator(
         }
 
         activeWorkers++;
-        onJobUpdate(job.id, { status: 'processing' });
-        onAnnouncement?.(`Processing ${job.name}...`);
 
         (async () => {
+          let release: (() => void) | null = null;
           try {
+            // Conservative reservation before reading: unknown headers never admit parallel heaps.
+            const estimate = await estimateJobMemory(job.file, settings);
+            if (isCancelled(job.id)) return;
+            release = await processingAdmission.acquire(job.id, estimate);
+            if (!release || isCancelled(job.id)) return;
+            onJobUpdate(job.id, { status: 'processing' });
+            onAnnouncement?.(`Processing ${job.name}...`);
             // Read buffer just-in-time to conserve heap memory
             const buffer = await job.file.arrayBuffer();
             if (isCancelled(job.id)) return;
             const result = await pool.submit({ id: job.id, buffer, settings });
+            release();
+            release = null;
 
             if (isCancelled(job.id)) return;
             if (result.ok) {
@@ -105,6 +115,7 @@ export async function runBatchOrchestrator(
             });
             onAnnouncement?.(`Crash processing ${job.name}.`);
           } finally {
+            release?.();
             activeWorkers--;
             launchNext();
           }

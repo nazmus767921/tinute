@@ -11,10 +11,10 @@ test('makes expert choices optional and keeps their controls usable', async ({ p
   await lossless.click();
   await expect(lossless).toBeChecked();
   await expect(page.getByRole('slider', { name: /quality/i })).not.toBeVisible();
-  await page.getByRole('radio', { name: /smaller file, same look/i }).click();
+  await page.getByRole('radio', { name: /high quality/i }).click();
   await expect(page.getByRole('slider', { name: /quality/i })).toBeVisible();
   await page.getByRole('button', { name: 'Reset to recommended' }).click();
-  await expect(format).toHaveText('Automatic (recommended)');
+  await expect(format).toHaveText('Keep original format');
   await page.getByText('Advanced settings', { exact: true }).click();
   await expect(format).not.toBeVisible();
   await expect(page.getByRole('button', { name: 'Choose images', exact: true })).toBeVisible();

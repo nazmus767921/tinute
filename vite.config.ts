@@ -12,7 +12,22 @@ export default defineConfig(({ command, mode }) => {
   const prodHeaders = getSecurityHeaders(false);
 
   return {
-    plugins: [react()],
+    plugins: [
+      react(),
+      {
+        name: 'production-response-headers',
+        configurePreviewServer(server) {
+          server.middlewares.use((request, response, next) => {
+            // Vite's static server answers conditional requests before applying preview.headers.
+            for (const [name, value] of Object.entries(prodHeaders))
+              response.setHeader(name, value);
+            if (request.url?.startsWith('/assets/'))
+              response.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+            next();
+          });
+        },
+      },
+    ],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),

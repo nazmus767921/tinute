@@ -38,20 +38,14 @@ export class WorkerPool {
       (() => new Worker(new URL('./pipeline.worker.ts', import.meta.url), { type: 'module' }));
 
     this.poolSize = config.maxWorkers ?? WorkerPool.determineOptimalPoolSize();
-    this.jobTimeoutMs = config.jobTimeoutMs ?? 120_000;
-    try {
-      this.initPool();
-    } catch (error) {
-      this.destroy();
-      throw error;
-    }
+    this.jobTimeoutMs = config.jobTimeoutMs ?? 30_000;
   }
 
   /**
    * Leave a CPU thread free and cap concurrent full-resolution codec heaps.
    */
   public static determineOptimalPoolSize(): number {
-    if (typeof navigator === 'undefined') return 2;
+    if (typeof navigator === 'undefined') return 1;
 
     const concurrency = navigator.hardwareConcurrency || 4;
     const isMobile =
@@ -62,7 +56,7 @@ export class WorkerPool {
       return 1;
     }
 
-    return Math.min(4, Math.max(1, concurrency - 1));
+    return Math.min(2, Math.max(1, concurrency - 1));
   }
 
   public get size(): number {
@@ -75,12 +69,6 @@ export class WorkerPool {
 
   public get queuedJobsCount(): number {
     return this.queue.length;
-  }
-
-  private initPool(): void {
-    for (let i = 0; i < this.poolSize; i++) {
-      this.spawnWorker();
-    }
   }
 
   private spawnWorker(): WorkerInstance {
@@ -131,9 +119,8 @@ export class WorkerPool {
       }
     }
 
-    // Respawn replacement worker unless the pool is shut down
+    // Create another worker only when queued work needs it.
     if (!this.isDestroyed) {
-      this.spawnWorker();
       this.drainQueue();
     }
   }
@@ -162,7 +149,7 @@ export class WorkerPool {
   }
 
   /**
-   * Cancels a job: terminates the active worker immediately and respawns a clean replacement.
+   * Cancels a job and immediately releases its worker heap.
    */
   public cancel(jobId: string): boolean {
     // 1. If still queued, remove directly
@@ -203,7 +190,6 @@ export class WorkerPool {
       }
 
       if (!this.isDestroyed) {
-        this.spawnWorker();
         this.drainQueue();
       }
       return true;
@@ -215,7 +201,9 @@ export class WorkerPool {
   private drainQueue(): void {
     if (this.isDestroyed || this.queue.length === 0) return;
 
-    const availableWorker = this.workers.find((w) => !w.isBusy);
+    const availableWorker =
+      this.workers.find((w) => !w.isBusy) ??
+      (this.workers.length < this.poolSize ? this.spawnWorker() : undefined);
     if (!availableWorker) return;
 
     const job = this.queue.shift();
@@ -242,10 +230,15 @@ export class WorkerPool {
         this.activeJobMap.delete(job.payload.id);
         availableWorker.isBusy = false;
         availableWorker.activeJobId = null;
+        // Termination releases codec heaps; native jobs also start from a clean ownership boundary.
+        availableWorker.worker.terminate();
+        this.workers = this.workers.filter((worker) => worker !== availableWorker);
         job.resolve(result);
       } catch (error) {
         if (this.activeJobMap.get(job.payload.id) !== job) return;
         this.activeJobMap.delete(job.payload.id);
+        availableWorker.worker.terminate();
+        this.workers = this.workers.filter((worker) => worker !== availableWorker);
         availableWorker.isBusy = false;
         availableWorker.activeJobId = null;
         job.resolve(

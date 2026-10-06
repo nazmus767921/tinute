@@ -32,6 +32,28 @@ if (fs.existsSync(INDEX_HTML)) {
   }
 }
 
+// Follow static entry imports; lazy codecs and workers have their own budgets below.
+for (const file of initialScripts) {
+  const source = fs.readFileSync(path.join(ASSETS_DIR, file), 'utf8');
+  for (const match of source.matchAll(/(?:from\s*|import\s*)["']\.\/([^"']+\.js)["']/g)) {
+    if (files.includes(match[1])) initialScripts.add(match[1]);
+  }
+}
+
+for (const file of files.filter((name) => /(?:pipeline|preview)\.worker-.*\.js$/.test(name))) {
+  const bytes = zlib.gzipSync(fs.readFileSync(path.join(ASSETS_DIR, file))).length;
+  if (bytes > 100 * 1024) throw new Error(`Worker exceeds 100 KiB gzip budget: ${file}`);
+  console.log(`Worker ${file}: ${(bytes / 1024).toFixed(2)} KiB gzip`);
+}
+for (const file of fs.readdirSync(path.join(DIST_DIR, 'wasm'))) {
+  if (
+    file.endsWith('.wasm') &&
+    fs.statSync(path.join(DIST_DIR, 'wasm', file)).size > 4 * 1024 * 1024
+  ) {
+    throw new Error(`Codec exceeds 4 MiB download budget: ${file}`);
+  }
+}
+
 console.log('\n=== Performance Budget Verification ===');
 console.log(
   `Initial JS Bundle Budget: ${BUDGET_KB} KB gzipped (${BUDGET_BYTES.toLocaleString()} bytes)\n`,

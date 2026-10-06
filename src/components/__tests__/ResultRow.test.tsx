@@ -3,6 +3,9 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { ResultRow } from '../ResultRow';
 import { imageJob } from '../../test/imageJob';
 import { downloadImageJob } from '../../utils/download';
+vi.mock('../../utils/preview', () => ({
+  createPreviewUrl: vi.fn().mockRejectedValue(new Error('no preview')),
+}));
 vi.mock('../../utils/download', () => ({ downloadImageJob: vi.fn() }));
 const props = {
   isSelectedForCompare: false,

@@ -38,6 +38,7 @@ export function getSecurityHeaders(isDev: boolean = false) {
   return {
     'Cross-Origin-Opener-Policy': 'same-origin',
     'Cross-Origin-Embedder-Policy': 'require-corp',
+    'Cross-Origin-Resource-Policy': 'same-origin',
     'Content-Security-Policy': isDev ? CSP_DIRECTIVES_DEV : CSP_DIRECTIVES_PRODUCTION,
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',

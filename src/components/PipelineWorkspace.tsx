@@ -1,3 +1,4 @@
+import { useShallow } from 'zustand/react/shallow';
 import React, { useState } from 'react';
 import { usePipelineStore, RECOMMENDED_SETTINGS } from '../store/pipelineStore';
 import { SettingsPanel } from './SettingsPanel';
@@ -11,7 +12,16 @@ import { ChevronDown, SlidersHorizontal, AlertCircle } from '@/icons';
 export const PipelineWorkspace: React.FC = () => {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const { jobs, settings, batchError, selectedCompareJobId, cancelAll, setSelectedCompareJobId } =
-    usePipelineStore();
+    usePipelineStore(
+      useShallow((state) => ({
+        jobs: state.jobs,
+        settings: state.settings,
+        batchError: state.batchError,
+        selectedCompareJobId: state.selectedCompareJobId,
+        cancelAll: state.cancelAll,
+        setSelectedCompareJobId: state.setSelectedCompareJobId,
+      })),
+    );
   const hasJobs = jobs.length > 0;
   const pending = jobs.some((j) => j.status === 'processing' || j.status === 'queued');
   const custom =

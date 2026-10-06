@@ -40,7 +40,7 @@ export type ImageFormat =
   'jpeg' | 'png' | 'webp' | 'avif' | 'jxl' | 'gif' | 'heic' | 'tiff' | 'bmp' | 'svg';
 
 export type EncodableFormat = 'jpeg' | 'png' | 'webp' | 'avif' | 'jxl' | 'gif' | 'tiff' | 'bmp';
-export type TargetFormat = 'auto' | EncodableFormat;
+export type TargetFormat = 'preserve' | 'auto' | EncodableFormat;
 export type OptimizationMode = 'lossless' | 'visually-lossless';
 export type ImageClassification = 'photo' | 'screenshot' | 'illustration' | 'line-art';
 
@@ -116,6 +116,7 @@ export interface EncodeResult {
   outputBuffer: ArrayBuffer;
   format: ImageFormat;
   qualityScore: number;
+  qualityVerified?: boolean | undefined;
   qualityParam?: number;
   iterations?: number;
   isLosslessBitExact?: boolean;
@@ -133,6 +134,7 @@ export interface GuardResult {
   metadataSanitized?: boolean;
   generationalLossWarning: boolean;
   qualityScore: number;
+  qualityVerified?: boolean | undefined;
   isLosslessBitExact: boolean;
 }
 
@@ -155,6 +157,7 @@ export interface FinalPipelineOutput {
   metadataSanitized?: boolean;
   generationalLossWarning: boolean;
   qualityScore: number;
+  qualityVerified?: boolean | undefined;
   isLosslessBitExact: boolean;
   classification: ImageClassification;
   mode: OptimizationMode;

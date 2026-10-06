@@ -11,6 +11,12 @@ describe('Security Headers Configuration (COOP, COEP & Strict CSP)', () => {
   it('configures Cross-Origin-Embedder-Policy as require-corp', () => {
     expect(SECURITY_HEADERS['Cross-Origin-Embedder-Policy']).toBe('require-corp');
   });
+  it('explicitly permits same-origin worker resources under COEP', () => {
+    expect(SECURITY_HEADERS).toHaveProperty('Cross-Origin-Resource-Policy', 'same-origin');
+    expect(fs.readFileSync('public/_headers', 'utf-8')).toContain(
+      'Cross-Origin-Resource-Policy: same-origin',
+    );
+  });
 
   it('configures strict CSP disallowing external domains', () => {
     const csp = SECURITY_HEADERS['Content-Security-Policy'];
@@ -33,5 +39,6 @@ describe('Security Headers Configuration (COOP, COEP & Strict CSP)', () => {
     expect(content).toContain("default-src 'self'");
     expect(content).toContain("script-src 'self' 'wasm-unsafe-eval'");
     expect(content).toContain('X-Frame-Options: DENY');
+    expect(content).toContain('/assets/*\n  Cache-Control: public, max-age=31536000, immutable');
   });
 });

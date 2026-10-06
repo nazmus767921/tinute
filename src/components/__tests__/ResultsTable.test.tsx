@@ -3,6 +3,9 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { ResultsTable } from '../ResultsTable';
 import { usePipelineStore } from '../../store/pipelineStore';
 import { imageJob } from '../../test/imageJob';
+vi.mock('../../utils/preview', () => ({
+  createPreviewUrl: vi.fn().mockRejectedValue(new Error('no preview')),
+}));
 describe('results', () => {
   beforeEach(() =>
     usePipelineStore.setState({

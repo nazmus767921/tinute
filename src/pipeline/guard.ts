@@ -70,7 +70,8 @@ export function guardOptimization(
     savingsPercentage,
     neverBiggerTriggered: false,
     generationalLossWarning,
-    qualityScore: encoded.qualityScore ?? 100.0,
+    qualityScore: encoded.qualityScore ?? 0,
+    qualityVerified: encoded.qualityVerified,
     isLosslessBitExact: encoded.isLosslessBitExact ?? false,
   });
 }

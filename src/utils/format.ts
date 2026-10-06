@@ -1,3 +1,4 @@
+import type { ImageFormat } from '../pipeline/types';
 /**
  * Formats byte values into human-readable strings with tabular mono clarity.
  */
@@ -44,4 +45,10 @@ export function getFileExtension(format: string): string {
   if (format === 'jpeg') return 'jpg';
   if (format === 'svg') return 'svg';
   return format;
+}
+
+export function getOutputExtension(name: string, format: ImageFormat): string {
+  const original = name.split('.').pop()?.toLowerCase();
+  if (format === 'jpeg' && (original === 'jpg' || original === 'jpeg')) return original;
+  return getFileExtension(format);
 }

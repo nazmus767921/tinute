@@ -1,80 +1,72 @@
-import { getCodec } from '../codecs';
 import type { ImageFormat } from '../pipeline/types';
 import { getMimeType } from './format';
+import { processingAdmission, PROCESSING_BUDGET_BYTES } from '../workers/admission';
 
-const BROWSER_NATIVE_FORMATS = new Set<ImageFormat>(['jpeg', 'png', 'webp', 'gif', 'svg']);
-
-/**
- * Creates an image preview URL (either direct Blob URL or Canvas-rasterized PNG for exotic formats like JXL/TIFF/HEIC).
- */
+/** All production preview decoding happens in a disposable, resource-admitted worker. */
 export async function createPreviewUrl(
-  buffer: ArrayBuffer,
+  source: ArrayBuffer | Blob,
   format: ImageFormat,
+  maxDimension = 1600,
+  signal?: AbortSignal,
 ): Promise<{ url: string; revoke: () => void }> {
-  // If natively supported by all browsers, use zero-overhead Blob URL
-  if (BROWSER_NATIVE_FORMATS.has(format)) {
-    const blob = new Blob([buffer], { type: getMimeType(format) });
-    const url = URL.createObjectURL(blob);
-    return {
-      url,
-      revoke: () => URL.revokeObjectURL(url),
-    };
-  }
-
-  // For AVIF, modern Chromium, Safari 16+, and Firefox support it natively
-  if (format === 'avif' && typeof createImageBitmap !== 'undefined') {
-    try {
-      const blob = new Blob([buffer], { type: 'image/avif' });
-      const bmp = await createImageBitmap(blob);
-      bmp.close();
-      const url = URL.createObjectURL(blob);
-      return {
-        url,
-        revoke: () => URL.revokeObjectURL(url),
-      };
-    } catch {
-      // Fall through to software WASM decode
-    }
-  }
-
-  // Fallback: decode via WASM codec and render to an offscreen canvas
+  const blob = source instanceof Blob ? source : new Blob([source], { type: getMimeType(format) });
+  const id = `preview-${crypto.randomUUID()}`;
+  const cancelWaiting = () => processingAdmission.cancel(id);
+  signal?.addEventListener('abort', cancelWaiting, { once: true });
+  let release: (() => void) | null = null;
   try {
-    const codec = getCodec(format);
-    if (!codec) {
-      const blob = new Blob([buffer], { type: getMimeType(format) });
+    if (signal?.aborted) throw new Error('Preview cancelled.');
+    release = await processingAdmission.acquire(
+      id,
+      PROCESSING_BUDGET_BYTES,
+      maxDimension <= 96 ? 0 : 5,
+    );
+    if (!release || signal?.aborted) throw new Error('Preview cancelled.');
+    // Test/non-worker environments may display native files without a software decode.
+    if (typeof Worker === 'undefined') {
+      if (!['jpeg', 'png', 'webp', 'gif', 'avif'].includes(format))
+        throw new Error('Preview workers are unavailable.');
       const url = URL.createObjectURL(blob);
       return { url, revoke: () => URL.revokeObjectURL(url) };
     }
-    const rawImage = await codec.decode(buffer);
-
-    if (typeof document !== 'undefined') {
-      const canvas = document.createElement('canvas');
-      canvas.width = rawImage.width;
-      canvas.height = rawImage.height;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        const clampedData = new Uint8ClampedArray(
-          rawImage.data.buffer,
-          rawImage.data.byteOffset,
-          rawImage.data.byteLength,
-        );
-        const imgData = new ImageData(clampedData, rawImage.width, rawImage.height);
-        ctx.putImageData(imgData, 0, 0);
-        const dataUrl = canvas.toDataURL('image/png');
-        return {
-          url: dataUrl,
-          revoke: () => {},
-        };
+    const output = await new Promise<Blob>((resolve, reject) => {
+      const worker = new Worker(new URL('../workers/preview.worker.ts', import.meta.url), {
+        type: 'module',
+      });
+      const finish = () => {
+        clearTimeout(timer);
+        signal?.removeEventListener('abort', abort);
+        worker.terminate();
+      };
+      const abort = () => {
+        finish();
+        reject(new Error('Preview cancelled.'));
+      };
+      const timer = setTimeout(() => {
+        finish();
+        reject(new Error('Preview took too long.'));
+      }, 15000);
+      signal?.addEventListener('abort', abort, { once: true });
+      worker.onmessage = (event: MessageEvent<{ blob?: Blob; error?: string }>) => {
+        finish();
+        if (event.data.blob) resolve(event.data.blob);
+        else reject(new Error(event.data.error ?? 'Preview unavailable.'));
+      };
+      worker.onerror = () => {
+        finish();
+        reject(new Error('Preview unavailable.'));
+      };
+      try {
+        worker.postMessage({ blob, format, maxDimension });
+      } catch (error) {
+        finish();
+        reject(error);
       }
-    }
-  } catch {
-    // If decode fails, fallback to basic blob
+    });
+    const url = URL.createObjectURL(output);
+    return { url, revoke: () => URL.revokeObjectURL(url) };
+  } finally {
+    signal?.removeEventListener('abort', cancelWaiting);
+    release?.();
   }
-
-  const blob = new Blob([buffer], { type: getMimeType(format) });
-  const url = URL.createObjectURL(blob);
-  return {
-    url,
-    revoke: () => URL.revokeObjectURL(url),
-  };
 }

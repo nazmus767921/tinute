@@ -4,7 +4,7 @@ import { ok } from '../../pipeline/types';
 import type { WorkerJobPayload } from '../types';
 
 describe('WorkerPool Lifecycle & Fault Isolation', () => {
-  it('settles a hung worker job and replaces the worker after its deadline', async () => {
+  it('settles a hung worker job and releases its heap after its deadline', async () => {
     vi.useFakeTimers();
     const workers: Worker[] = [];
     const pool = new WorkerPool({
@@ -31,7 +31,7 @@ describe('WorkerPool Lifecycle & Fault Isolation', () => {
       const result = await pending;
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error.message).toMatch(/too long/i);
-      expect(workers).toHaveLength(2);
+      expect(workers).toHaveLength(1);
       expect(workers[0]!.terminate).toHaveBeenCalled();
     } finally {
       pool.destroy();
@@ -42,7 +42,7 @@ describe('WorkerPool Lifecycle & Fault Isolation', () => {
     const original = Object.getOwnPropertyDescriptor(navigator, 'hardwareConcurrency');
     Object.defineProperty(navigator, 'hardwareConcurrency', { configurable: true, value: 128 });
     try {
-      expect(WorkerPool.determineOptimalPoolSize()).toBeLessThanOrEqual(4);
+      expect(WorkerPool.determineOptimalPoolSize()).toBeLessThanOrEqual(2);
     } finally {
       if (original) Object.defineProperty(navigator, 'hardwareConcurrency', original);
       else Reflect.deleteProperty(navigator, 'hardwareConcurrency');
